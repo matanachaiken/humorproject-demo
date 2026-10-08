@@ -2,11 +2,12 @@ import Link from "next/link";
 import { requireCompleteProfile } from "@/lib/auth";
 
 export default async function MembersPage() {
-  const { supabase, profile } = await requireCompleteProfile();
+  const { supabase, user, profile } = await requireCompleteProfile();
 
   const { count } = await supabase
-    .from("jokes")
-    .select("id", { count: "exact", head: true });
+    .from("generations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-10 py-16">
@@ -22,11 +23,11 @@ export default async function MembersPage() {
       </p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <Link
-          href="/jokes"
+          href="/feed"
           className="rounded-lg border p-5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
         >
           <p className="text-2xl font-bold">{count ?? 0}</p>
-          <p className="text-zinc-600 dark:text-zinc-400">jokes in the collection &rarr;</p>
+          <p className="text-zinc-600 dark:text-zinc-400">images you&apos;ve created &rarr;</p>
         </Link>
         <Link
           href="/profile"

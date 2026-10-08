@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Humor Project",
-  description: "A small collection of setups and punchlines.",
+  description: "Riff on a new theme every day, let AI make the image, and vote on the funniest.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

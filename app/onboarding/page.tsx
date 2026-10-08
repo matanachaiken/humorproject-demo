@@ -10,7 +10,7 @@ export default async function OnboardingPage({
 }: PageProps<"/onboarding">) {
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect("/login");
-  if (isProfileComplete(profile)) redirect("/members");
+  if (isProfileComplete(profile)) redirect("/feed");
 
   const { error } = await searchParams;
 

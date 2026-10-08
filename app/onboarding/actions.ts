@@ -24,5 +24,5 @@ export async function saveNames(formData: FormData) {
     .eq("id", user.id);
   if (error) redirect("/onboarding?error=save_failed");
 
-  redirect("/members");
+  redirect("/feed");
 }

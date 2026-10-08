@@ -11,11 +11,11 @@ export default async function SiteHeader() {
         Humor Project
       </Link>
       <nav className="flex items-center gap-4 text-sm">
-        <Link href="/jokes" className="hover:underline">
-          Jokes
-        </Link>
         {user ? (
           <>
+            <Link href="/feed" className="hover:underline">
+              Feed
+            </Link>
             <Link href="/members" className="hover:underline">
               Members
             </Link>
