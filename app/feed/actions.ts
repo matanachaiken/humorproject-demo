@@ -224,16 +224,6 @@ export async function castVote(generationId: number, vote: number): Promise<Vote
     return { ok: false, error: "Invalid vote." };
   }
 
-  const { data: target } = await supabase
-    .from("generations")
-    .select("user_id")
-    .eq("id", generationId)
-    .maybeSingle();
-  if (!target) return { ok: false, error: "That riff doesn't exist anymore." };
-  if (target.user_id === user.id) {
-    return { ok: false, error: "That's your riff. Let everyone else decide!" };
-  }
-
   if (vote === 0) {
     const { error } = await supabase
       .from("generation_votes")
@@ -263,6 +253,7 @@ export async function castVote(generationId: number, vote: number): Promise<Vote
       : { ok: true, xp: await readXp(supabase, user.id) };
   }
 
+  if (insertError.code === "23503") return { ok: false, error: "That riff doesn't exist anymore." };
   console.error("Vote failed:", insertError);
   return { ok: false, error: "Couldn't save your vote." };
 }

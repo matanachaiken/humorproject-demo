@@ -25,10 +25,6 @@ export function useVotes({
 
   async function vote(riff: Riff, value: 1 | -1) {
     if (!signedIn) return onNeedSignIn();
-    if (riff.isMine) {
-      setError("That's your riff. Let everyone else decide!");
-      return;
-    }
 
     const previous = tally(riff);
     // Tapping your current vote again takes it back.
