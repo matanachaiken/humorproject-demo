@@ -68,6 +68,10 @@ export async function generateJson<T>(
   throw new Error(`All Gemini models failed: ${errors.join(" | ")}`);
 }
 
+// Cloudflare's NSFW filter rejected the prompt. It is stricter than our own rules,
+// so a prompt Gemini thought was fine can still trip it.
+export class ImageBlockedError extends Error {}
+
 // Calls Cloudflare Workers AI (Flux 1 Schnell) and returns the JPEG bytes.
 export async function generateImage(prompt: string): Promise<Buffer> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
@@ -86,7 +90,10 @@ export async function generateImage(prompt: string): Promise<Buffer> {
     }
   );
   if (!res.ok) {
-    throw new Error(`Cloudflare error ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const body = await res.text();
+    // 8007 is Workers AI's "Input prompt contains NSFW content".
+    if (body.includes('"code":8007')) throw new ImageBlockedError(body.slice(0, 300));
+    throw new Error(`Cloudflare error ${res.status}: ${body.slice(0, 300)}`);
   }
 
   const data = await res.json();

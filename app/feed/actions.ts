@@ -8,6 +8,7 @@ import {
   AUDIENCE,
   DAILY_LIMIT,
   IMAGE_MODEL,
+  ImageBlockedError,
   generateImage,
   generateJson,
 } from "@/lib/ai";
@@ -46,6 +47,21 @@ online Columbia student. Lowercase is fine.
 Keep everything PG-13. Never depict real, identifiable people, sexual content, gore, \
 or anything hateful or demeaning toward a group. If the idea asks for any of that, \
 set allowed to false and leave the other fields empty.`;
+}
+
+const saferSchema = {
+  type: "object",
+  properties: { image_prompt: { type: "string" } },
+  required: ["image_prompt"],
+};
+
+function buildSaferPrompt(imagePrompt: string) {
+  return `An image model's safety filter rejected this prompt as NSFW:
+"${imagePrompt}"
+
+Rewrite it to keep the same joke, style and composition, but make it clearly safe \
+for work: no nudity or revealing clothing, no drinking or drunkenness, drugs, weapons, \
+blood or injuries. Under 120 words.`;
 }
 
 export async function createGeneration(
@@ -92,9 +108,23 @@ export async function createGeneration(
     textModel = model;
     imagePrompt = result.image_prompt.trim();
     caption = result.caption.trim().slice(0, 140);
-    image = await generateImage(imagePrompt);
+    try {
+      image = await generateImage(imagePrompt);
+    } catch (error) {
+      if (!(error instanceof ImageBlockedError)) throw error;
+      // Flux's filter is stricter than ours, so ask once for a tamer prompt.
+      const { result: safer } = await generateJson<{ image_prompt: string }>(
+        buildSaferPrompt(imagePrompt),
+        saferSchema
+      );
+      imagePrompt = safer.image_prompt.trim();
+      image = await generateImage(imagePrompt);
+    }
   } catch (error) {
     console.error("Generation failed:", error);
+    if (error instanceof ImageBlockedError) {
+      return { error: "The image filter flagged that one. Try rewording your idea." };
+    }
     return { error: "The AI had a moment. Please try again." };
   }
 
