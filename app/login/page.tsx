@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { safeNextPath } from "@/lib/auth";
+import { getSessionUser, safeNextPath } from "@/lib/auth";
 import { LogoMark } from "@/app/Logo";
 import GoogleButton from "./GoogleButton";
 
@@ -8,9 +8,7 @@ export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   const { error, next } = await searchParams;
   const nextPath = safeNextPath(typeof next === "string" ? next : null);
   if (user) redirect(nextPath);

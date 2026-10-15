@@ -29,10 +29,10 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refreshes the auth token if it has expired.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refreshes the auth token if it has expired, then verifies it locally
+  // (asymmetric signing keys), so navigations don't wait on Supabase Auth.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ?? null;
 
   const { pathname } = request.nextUrl;
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth";
 import { getTodaysTheme } from "@/lib/theme";
 import { nyDayStart } from "@/lib/day";
 import { generationColumns, toRiffs, type GenerationRow } from "@/lib/generations";
@@ -15,9 +16,7 @@ const STEPS = [
 
 export default async function Home() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (user) redirect("/feed");
 
   const top = (since?: string) => {
@@ -37,20 +36,23 @@ export default async function Home() {
   const collage = (await toRiffs(supabase, null, allTime.data ?? [])).slice(0, 3);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-14">
-      <section className="grid items-center gap-10 lg:grid-cols-2">
+    <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+      <section className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr]">
         <div>
           <p className="inline-block rounded-full bg-brand-soft px-3 py-1 text-xs font-bold tracking-wider text-brand-strong uppercase dark:bg-brand/15 dark:text-brand">
             A new theme every day
           </p>
-          <h1 className="mt-4 font-display text-5xl leading-[1.02] font-extrabold tracking-tight text-balance sm:text-6xl">
-            Your silliest idea. <span className="text-brand">Drawn by AI.</span> Judged by everyone.
+          {/* One phrase per line, sized to the viewport so it never wraps past three lines. */}
+          <h1 className="mt-4 font-display text-[clamp(2rem,7.5vw,3.1rem)] leading-[1.05] font-extrabold tracking-tight">
+            <span className="block whitespace-nowrap">Your silliest idea.</span>
+            <span className="block whitespace-nowrap text-brand">Drawn by AI.</span>
+            <span className="block whitespace-nowrap">Judged by everyone.</span>
           </h1>
-          <p className="mt-5 max-w-lg text-lg text-muted">
+          <p className="mt-4 max-w-lg text-lg text-muted">
             Daily Riff is a daily comedy game for Columbia students. Riff on the theme, let AI
             make it real, and fight for the top spot.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/login?next=/feed"
               className="rounded-full bg-brand px-6 py-3.5 font-semibold text-white shadow-lg shadow-brand/30 hover:bg-brand-strong"
@@ -67,7 +69,7 @@ export default async function Home() {
         </div>
 
         {collage.length === 3 && (
-          <div className="relative mx-auto hidden aspect-square w-full max-w-md sm:block" aria-hidden="true">
+          <div className="relative mx-auto hidden aspect-square w-full max-w-[21rem] lg:block" aria-hidden="true">
             {collage.map((riff, i) => (
               <figure
                 key={riff.id}
@@ -84,7 +86,7 @@ export default async function Home() {
         )}
       </section>
 
-      <div className="mt-14">
+      <div className="mt-10">
         <ThemeHero theme={theme}>
           <SignedOutCta />
         </ThemeHero>

@@ -136,20 +136,27 @@ async function pickTheme(day: string): Promise<PickedTheme> {
   }
 }
 
+// Kept in memory per server instance, so most requests skip the database.
+let remembered: DailyTheme | null = null;
+
 // Today's theme. The first visit of the day picks it and saves it, so
 // everyone sees the same theme all day.
 export async function getTodaysTheme(): Promise<DailyTheme> {
   const day = nyToday();
-  const supabase = await createClient();
-  const { data: existing } = await supabase
+  if (remembered?.day === day) return remembered;
+
+  // Read with the server key: if the visitor's own read were ever blocked,
+  // we'd otherwise call Reddit and Gemini on every page load.
+  const admin = createAdminClient();
+  const reader = admin ?? (await createClient());
+  const { data: existing } = await reader
     .from("daily_themes")
     .select("day, theme, source_title, source_url")
     .eq("day", day)
     .maybeSingle<DailyTheme>();
-  if (existing) return existing;
+  if (existing) return (remembered = existing);
 
   const picked = await pickTheme(day);
-  const admin = createAdminClient();
   if (!admin) return picked;
 
   // If two visitors race, the first insert wins and both read it back.
@@ -159,5 +166,5 @@ export async function getTodaysTheme(): Promise<DailyTheme> {
     .select("day, theme, source_title, source_url")
     .eq("day", day)
     .single<DailyTheme>();
-  return saved ?? picked;
+  return (remembered = saved ?? picked);
 }

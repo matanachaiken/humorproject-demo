@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type Profile = {
@@ -13,11 +14,24 @@ export function isProfileComplete(profile: Profile | null) {
   return Boolean(profile?.first_name?.trim() && profile?.last_name?.trim());
 }
 
-export async function getUserAndProfile() {
+export type SessionUser = { id: string; email: string | null };
+
+// The signed-in user, verified from the session's signed JWT. The project
+// uses asymmetric signing keys, so this is checked locally instead of with a
+// round trip to Supabase Auth on every request.
+export async function getSessionUser(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<SessionUser | null> {
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
+}
+
+// Cached per request, so the header and the page share one lookup.
+export const getUserAndProfile = cache(async () => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) return { supabase, user: null, profile: null };
 
   const { data: profile } = await supabase
@@ -27,7 +41,7 @@ export async function getUserAndProfile() {
     .maybeSingle<Profile>();
 
   return { supabase, user, profile };
-}
+});
 
 // Use in protected pages: sends signed-out users to /login and
 // users without a first/last name to /onboarding.
