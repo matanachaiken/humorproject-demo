@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { formatDay } from "@/lib/day";
 
@@ -22,8 +23,13 @@ export default function ChampStrip({
       href={`/g/${id}`}
       className="group flex items-center gap-4 rounded-3xl border border-amber-300/60 bg-amber-50 p-3 pr-5 transition-colors hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-2xl object-cover" />
+      <Image
+        src={imageUrl}
+        alt=""
+        width={56}
+        height={56}
+        className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+      />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold tracking-wider text-amber-700 uppercase dark:text-amber-400">
           🏆 Champ of {formatDay(day)}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import type { Riff } from "@/lib/generations";
 import RiffDetails from "@/app/_components/RiffDetails";
@@ -20,10 +21,13 @@ export default function RiffView({
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-start">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={riff.imageUrl}
         alt={riff.caption}
+        width={1024}
+        height={1024}
+        sizes="(min-width: 1024px) 620px, 100vw"
+        loading="eager"
         className="aspect-square w-full rounded-[2rem] object-cover shadow-xl"
       />
       <div className="flex flex-col gap-4">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Riff } from "@/lib/generations";
@@ -98,8 +99,14 @@ export default function BattleArena({
               }`}
             >
               <div className="relative aspect-square w-full overflow-hidden bg-surface-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={riff.imageUrl} alt={riff.caption} className="h-full w-full object-cover" />
+                <Image
+                  src={riff.imageUrl}
+                  alt={riff.caption}
+                  fill
+                  sizes="(min-width: 896px) 420px, 50vw"
+                  loading="eager"
+                  className="object-cover"
+                />
                 {isPick && (
                   <span className="absolute top-3 left-3 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white sm:text-sm">
                     Your pick

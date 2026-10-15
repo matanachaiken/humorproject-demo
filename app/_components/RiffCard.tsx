@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { Riff } from "@/lib/generations";
 import { STYLES, frameFor } from "@/lib/progression";
 import LevelBadge from "./LevelBadge";
@@ -61,12 +62,12 @@ export default function RiffCard({
           className="relative block aspect-square w-full overflow-hidden bg-surface-2"
           aria-label={`Open “${riff.caption}”`}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={riff.imageUrl}
             alt={riff.caption}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            fill
+            sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
           {medal && (
             <span className="absolute top-3 left-3 rounded-full bg-black/70 px-3 py-1 text-sm font-semibold text-white backdrop-blur">

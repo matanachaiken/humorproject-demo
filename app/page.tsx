@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -32,8 +33,10 @@ export default async function Home() {
   const [theme, today, allTime] = await Promise.all([getTodaysTheme(), top(nyDayStart()), top()]);
   // Early in the day there may be little to show, so fall back to all-time favorites.
   const showToday = (today.data?.length ?? 0) >= 3;
-  const riffs = await toRiffs(supabase, null, (showToday ? today.data : allTime.data) ?? []);
-  const collage = (await toRiffs(supabase, null, allTime.data ?? [])).slice(0, 3);
+  const [riffs, collage] = await Promise.all([
+    toRiffs(supabase, null, (showToday ? today.data : allTime.data) ?? []),
+    toRiffs(supabase, null, (allTime.data ?? []).slice(0, 3)),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
@@ -77,8 +80,15 @@ export default async function Home() {
                   ["top-0 left-0 -rotate-6", "top-[12%] right-0 rotate-6", "bottom-0 left-[20%] -rotate-2"][i]
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={riff.imageUrl} alt="" className="aspect-square w-full rounded-2xl object-cover" />
+                <Image
+                  src={riff.imageUrl}
+                  alt=""
+                  width={1024}
+                  height={1024}
+                  sizes="200px"
+                  loading="eager"
+                  className="aspect-square w-full rounded-2xl object-cover"
+                />
                 <figcaption className="mt-2 line-clamp-1 px-1 text-sm font-semibold">{riff.caption}</figcaption>
               </figure>
             ))}

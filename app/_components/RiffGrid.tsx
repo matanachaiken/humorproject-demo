@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { formatDay } from "@/lib/day";
 import type { Riff } from "@/lib/generations";
@@ -91,8 +92,15 @@ export default function RiffGrid({
         {open && (
           <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="relative bg-black">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={open.imageUrl} alt={open.caption} className="aspect-square w-full object-contain" />
+              <Image
+                src={open.imageUrl}
+                alt={open.caption}
+                width={1024}
+                height={1024}
+                sizes="(min-width: 768px) 560px, 100vw"
+                loading="eager"
+                className="aspect-square w-full object-contain"
+              />
               {riffs.length > 1 && (
                 <>
                   <NavArrow direction="prev" onClick={() => step(-1)} />

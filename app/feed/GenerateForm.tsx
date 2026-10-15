@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useState } from "react";
 import ShareButton from "@/app/_components/ShareButton";
@@ -189,10 +190,12 @@ export default function GenerateForm({
 
       {!pending && state && "created" in state && (
         <div className="flex animate-fade-in flex-col gap-4 rounded-3xl bg-white p-4 text-stone-900 sm:flex-row sm:items-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={state.created.imageUrl}
             alt={state.created.caption}
+            width={1024}
+            height={1024}
+            sizes="(min-width: 640px) 144px, 100vw"
             className="aspect-square w-full rounded-2xl object-cover sm:w-36"
           />
           <div className="flex flex-col gap-3">
