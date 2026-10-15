@@ -6,6 +6,7 @@ import { getUserAndProfile, isProfileComplete } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   AUDIENCE,
+  AiBusyError,
   IMAGE_MODEL,
   ImageBlockedError,
   generateImage,
@@ -159,6 +160,10 @@ export async function createGeneration(
     console.error("Generation failed:", error);
     if (error instanceof ImageBlockedError) {
       return { error: "The image filter flagged that one. Try rewording your idea." };
+    }
+    // Nothing was created, so this doesn't use up one of today's creations.
+    if (error instanceof AiBusyError) {
+      return { error: "The AI is swamped right now. Your idea is saved, so try again in a bit." };
     }
     return { error: "The AI had a moment. Please try again." };
   }

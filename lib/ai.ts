@@ -62,8 +62,14 @@ export async function generateJson<T>(
     }
     return { result: JSON.parse(text) as T, model };
   }
-  throw new Error(`All Gemini models failed: ${errors.join(" | ")}`);
+  const message = `All Gemini models failed: ${errors.join(" | ")}`;
+  // Every model was rate-limited (free tier: 20 requests/day each) or overloaded.
+  if (errors.every((e) => / (429|503) /.test(e))) throw new AiBusyError(message);
+  throw new Error(message);
 }
+
+// All text models are out of quota or overloaded; worth trying again later.
+export class AiBusyError extends Error {}
 
 // Cloudflare's NSFW filter rejected the prompt. It is stricter than our own rules,
 // so a prompt Gemini thought was fine can still trip it.

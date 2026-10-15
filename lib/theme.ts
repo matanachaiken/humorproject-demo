@@ -17,7 +17,7 @@ export type DailyTheme = {
 const SUBREDDITS = ["nyc", "AskNYC", "Columbia", "college"];
 
 // Used only when both Reddit and Gemini are unavailable.
-export const FALLBACK_THEMES = [
+const FALLBACK_THEMES = [
   "Midwest kid rides the subway for the first time",
   "Your RA as a Renaissance painting",
   "Pigeons running Wall Street",
@@ -170,7 +170,7 @@ const examplesSchema = {
   required: ["examples"],
 };
 
-// Three example ideas for the theme, shown in the create box so people see
+// Six example ideas for the theme, shown in the create box so people see
 // what an on-theme riff looks like. Drafted once per day, after the response.
 const draftingExamplesFor = new Set<string>();
 function draftIdeaExamples(theme: DailyTheme) {
@@ -186,15 +186,15 @@ ${AUDIENCE}
 
 Today's theme: "${theme.theme}"
 
-Write THREE example ideas a user might type for this theme. Each one is a specific, visual,
-absurd scene in under 70 characters, lowercase, no quotes or hashtags. Make the three
+Write SIX example ideas a user might type for this theme. Each one is a specific, visual,
+absurd scene in under 70 characters, lowercase, no quotes or hashtags. Make them all
 clearly different from each other, and keep them PG-13.`,
         examplesSchema
       );
       const examples = result.examples
         .map((e) => e.trim().replace(/^["']|["']$/g, "").slice(0, 90))
         .filter(Boolean)
-        .slice(0, 3);
+        .slice(0, 6);
       if (examples.length) {
         await admin.from("daily_themes").update({ idea_examples: examples }).eq("day", theme.day);
       }

@@ -17,6 +17,7 @@ const COOKING_LINES = [
 ];
 
 const FALLBACK_EXAMPLE = "a pigeon conductor apologizing over the intercom";
+const EXAMPLE_KEY = "dr_example_index";
 
 export default function GenerateForm({
   remaining,
@@ -37,7 +38,7 @@ export default function GenerateForm({
   const [line, setLine] = useState(0);
   const [style, setStyle] = useState<StyleId>("classic");
   const [idea, setIdea] = useState("");
-  const [exampleIndex, setExampleIndex] = useState(0);
+  const [exampleIndex, setExampleIndex] = useState<number | null>(null);
   const outOfCreations = remaining <= 0;
 
   // Clear the box after a riff is made, but keep the text when the idea was
@@ -48,12 +49,20 @@ export default function GenerateForm({
     if (state && "created" in state) setIdea("");
   }
 
-  // Cycle through today's example ideas in the placeholder.
+  // One example idea per visit: each time the feed is opened, a per-tab
+  // counter moves to the next of today's examples, so it doesn't repeat until
+  // they've all been shown. Picked after mount (sessionStorage is browser-only).
   const placeholders = examples.length ? examples : [FALLBACK_EXAMPLE];
   useEffect(() => {
-    if (placeholders.length < 2) return;
-    const timer = setInterval(() => setExampleIndex((i) => i + 1), 4000);
-    return () => clearInterval(timer);
+    let next = Math.floor(Math.random() * placeholders.length);
+    try {
+      const last = sessionStorage.getItem(EXAMPLE_KEY);
+      if (last !== null) next = Number(last) + 1;
+      sessionStorage.setItem(EXAMPLE_KEY, String(next));
+    } catch {}
+    // Browser-only and once per visit, so it can't be computed during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExampleIndex(next);
   }, [placeholders.length]);
 
   // Let the header animate the XP from a new riff.
@@ -126,7 +135,11 @@ export default function GenerateForm({
             disabled={pending || outOfCreations}
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            placeholder={`e.g. ${placeholders[exampleIndex % placeholders.length]}`}
+            placeholder={
+              exampleIndex === null
+                ? "Type your idea for today's theme"
+                : `e.g. ${placeholders[exampleIndex % placeholders.length]}`
+            }
             className="min-w-0 flex-1 rounded-full border-0 bg-white px-5 py-3.5 text-base text-stone-900 shadow-inner placeholder:text-stone-400 focus:ring-4 focus:ring-brand/50 focus:outline-none disabled:opacity-60"
           />
           <button

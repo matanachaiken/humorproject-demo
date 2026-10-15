@@ -52,15 +52,19 @@ export default function ProgressHud({ progress, today }: { progress: Progress; t
   }, [gain]);
 
   // Daily check-in + wheel: pops up once on the first visit of the day.
+  // `popupsReady` holds back the level-up screen until we know whether the
+  // wheel goes first, so the two never flash over each other.
   const [wheelOpen, setWheelOpen] = useState(false);
+  const [popupsReady, setPopupsReady] = useState(false);
   useEffect(() => {
-    if (progress.spunToday) return;
-    let dismissed = false;
+    let dismissed = progress.spunToday;
     try {
-      dismissed = sessionStorage.getItem(dismissKey(today)) === "1";
+      dismissed ||= sessionStorage.getItem(dismissKey(today)) === "1";
     } catch {}
-    if (dismissed) return;
-    const timer = setTimeout(() => setWheelOpen(true), 600);
+    const timer = setTimeout(() => {
+      if (!dismissed) setWheelOpen(true);
+      setPopupsReady(true);
+    }, 600);
     return () => clearTimeout(timer);
   }, [progress.spunToday, today]);
 
@@ -74,7 +78,7 @@ export default function ProgressHud({ progress, today }: { progress: Progress; t
   // Level-ups from any source (including upvotes while you were away).
   const [seenLevel, setSeenLevel] = useState(progress.seenLevel);
   const info = levelInfo(xp);
-  const levelUp = !wheelOpen && info.level > seenLevel;
+  const levelUp = popupsReady && !wheelOpen && info.level > seenLevel;
 
   function closeLevelUp() {
     setSeenLevel(info.level);
@@ -236,14 +240,14 @@ function DailyWheel({ open, streak, onClose }: { open: boolean; streak: number; 
 
 function LevelUpContent({ from, to, onClose }: { from: number; to: number; onClose: () => void }) {
   const reached = LEVELS.find((l) => l.level === to)!;
-  const unlocks = LEVELS.filter((l) => l.level > from && l.level <= to).map((l) => describeUnlock(l.unlock));
-  const firstUnlock = LEVELS.find((l) => l.level > from && l.level <= to)?.unlock;
-  const cta =
-    firstUnlock?.kind === "room"
-      ? { href: "/writers-room", label: "Open the Writers' Room" }
-      : firstUnlock?.kind === "style"
-        ? { href: "/feed", label: "Try your new style" }
-        : null;
+  const gained = LEVELS.filter((l) => l.level > from && l.level <= to).map((l) => l.unlock);
+  const unlocks = gained.map(describeUnlock);
+  // After a multi-level jump, point at the biggest unlock.
+  const cta = gained.some((u) => u.kind === "room")
+    ? { href: "/writers-room", label: "Open the Writers' Room" }
+    : gained.some((u) => u.kind === "style")
+      ? { href: "/feed", label: "Try your new style" }
+      : null;
 
   return (
     <div className="relative overflow-hidden p-8 text-center">

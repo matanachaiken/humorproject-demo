@@ -48,10 +48,11 @@ export default function Wheel({ rotation }: { rotation: number }) {
                 stroke="white"
                 strokeWidth="2"
               />
+              {/* Labels on the bottom half are flipped so they read upright. */}
               <text
                 x={C}
-                y={C - 70}
-                transform={`rotate(${s.mid} ${C} ${C})`}
+                y={s.mid > 90 && s.mid < 270 ? C + 70 : C - 70}
+                transform={`rotate(${s.mid > 90 && s.mid < 270 ? s.mid + 180 : s.mid} ${C} ${C})`}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="fill-white font-display text-[15px] font-extrabold"

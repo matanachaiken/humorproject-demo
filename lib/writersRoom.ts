@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { AUDIENCE, generateJson } from "@/lib/ai";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { FALLBACK_THEMES, fetchTrendingPosts, type RedditPost } from "@/lib/theme";
+import { fetchTrendingPosts, type RedditPost } from "@/lib/theme";
 
 export type Candidate = {
   id: number;
@@ -80,13 +80,10 @@ export const ensureCandidates = cache(async (forDay: string): Promise<Candidate[
       source_url: posts[t.source_index]?.url ?? null,
     }));
   } catch (error) {
-    console.warn("Writers' Room: AI drafting failed, using fallbacks:", error);
-    const start = Math.floor(Date.parse(forDay) / 86_400_000);
-    drafts = [0, 4, 8].map((offset) => ({
-      theme: FALLBACK_THEMES[(start + offset) % FALLBACK_THEMES.length],
-      source_title: null,
-      source_url: null,
-    }));
+    // Save nothing, so the next visit tries again instead of locking in
+    // tomorrow's ballot while the AI is down. The page shows "still drafting".
+    console.warn("Writers' Room: AI drafting failed, will retry:", error);
+    return existing ?? [];
   }
 
   await admin
