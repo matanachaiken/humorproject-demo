@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isProfileComplete, safeNextPath, type Profile } from "@/lib/auth";
+import { fillProfileName, isProfileComplete, safeNextPath, type Profile } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -25,8 +25,9 @@ export async function GET(request: NextRequest) {
   // GoogleButton leaves the page to come back to in a short-lived cookie.
   const saved = request.cookies.get("auth_next")?.value;
   const back = safeNextPath(saved ? decodeURIComponent(saved) : null);
-  const next = isProfileComplete(profile) ? back : "/onboarding";
-  const response = NextResponse.redirect(`${origin}${next}`);
+  // New account: name it from Google (or the email) instead of asking.
+  if (!isProfileComplete(profile)) await fillProfileName(supabase, data.user);
+  const response = NextResponse.redirect(`${origin}${back}`);
   response.cookies.delete("auth_next");
   return response;
 }

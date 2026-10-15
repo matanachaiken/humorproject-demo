@@ -19,8 +19,8 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) {
-      setStatus("First and last name are required.");
+    if (!firstName.trim()) {
+      setStatus("Your first name is required.");
       return;
     }
     setSaving(true);
@@ -48,7 +48,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       .from("profiles")
       .update({
         first_name: firstName.trim(),
-        last_name: lastName.trim(),
+        last_name: lastName.trim() || null,
         avatar_url: newAvatarUrl,
         updated_at: new Date().toISOString(),
       })
@@ -102,7 +102,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Last name</span>
+        <span className="text-sm font-medium">Last name <span className="font-normal text-muted">(optional)</span></span>
         <input
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}

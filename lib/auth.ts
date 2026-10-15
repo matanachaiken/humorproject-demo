@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { nyToday } from "@/lib/day";
+import { nameFromAccount } from "@/lib/names";
 
 export type Profile = {
   id: string;
@@ -11,8 +12,22 @@ export type Profile = {
   avatar_url: string | null;
 };
 
+// Names are filled in automatically at sign-in (see lib/names.ts); a first
+// name is all a profile needs.
 export function isProfileComplete(profile: Profile | null) {
-  return Boolean(profile?.first_name?.trim() && profile?.last_name?.trim());
+  return Boolean(profile?.first_name?.trim());
+}
+
+// Saves a name from the Google account (or email) on a profile that has none.
+export async function fillProfileName(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }
+) {
+  const { first, last } = nameFromAccount(user.user_metadata, user.email);
+  await supabase
+    .from("profiles")
+    .update({ first_name: first, last_name: last || null, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
 }
 
 export type SessionUser = { id: string; email: string | null };
@@ -91,7 +106,7 @@ export const getUserAndProfile = cache(async () => {
 });
 
 // Use in protected pages: sends signed-out users to /login and
-// users without a first/last name to /onboarding.
+// the rare profile without a name to /onboarding, which fills one in.
 export async function requireCompleteProfile() {
   const result = await getUserAndProfile();
   if (!result.user) redirect("/login");

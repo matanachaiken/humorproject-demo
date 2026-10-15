@@ -11,7 +11,9 @@ const icons = {
     <path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8 20h8M9.5 17h5" />
   ),
   me: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" />,
-  room: <path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9zM4 10l1.5-5 15 3.5L20 10M9 5.6l-1 4.2M14 6.8l-1 3.2" />,
+  room: (
+    <path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9zM4 10l1.5-5 15 3.5L20 10M9 5.6l-1 4.2M14 6.8l-1 3.2" />
+  ),
 };
 
 type Item = {
@@ -107,7 +109,10 @@ export default function NavLinks({
             {icons[item.icon]}
           </svg>
           {item.locked && (
-            <span aria-label="locked" className="absolute top-1 right-[calc(50%-1.4rem)] text-[10px]">
+            <span
+              aria-label="locked"
+              className="absolute top-1 right-[calc(50%-1.4rem)] text-[10px]"
+            >
               🔒
             </span>
           )}

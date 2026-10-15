@@ -177,11 +177,15 @@ export async function createGeneration(
     return { error: "Couldn't save the image. Please try again." };
   }
 
+  // "Jane D.", or just "Jane" when there's no last name.
+  const lastName = profile!.last_name?.trim();
+  const creatorName = `${profile!.first_name!.trim()}${lastName ? ` ${lastName[0]}.` : ""}`;
+
   const { data: inserted, error: insertError } = await admin
     .from("generations")
     .insert({
       user_id: user.id,
-      creator_name: `${profile!.first_name!.trim()} ${profile!.last_name!.trim()[0]}.`,
+      creator_name: creatorName,
       theme_day: theme.day,
       theme: theme.theme,
       user_input: idea,
