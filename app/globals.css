@@ -72,6 +72,22 @@ body {
   color: var(--ink);
 }
 
+/* Card frames unlocked at level 7 (gold) and level 10 (holographic). */
+.frame-gold {
+  background: linear-gradient(135deg, #fde68a, #f59e0b 35%, #fef3c7 55%, #d97706);
+}
+
+.frame-holo {
+  background: linear-gradient(120deg, #f472b6, #fde047, #67e8f9, #a78bfa, #f472b6);
+  background-size: 300% 300%;
+  animation: holo 6s linear infinite;
+}
+
+@keyframes holo {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
 html:has(dialog[open]) {
   overflow: hidden;
 }

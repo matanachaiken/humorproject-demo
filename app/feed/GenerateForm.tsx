@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import ShareButton from "@/app/_components/ShareButton";
+import { STYLES, type StyleId } from "@/lib/progression";
+import { announceXp } from "@/lib/xpEvents";
 import { createGeneration, type GenerateState } from "./actions";
 
 const COOKING_LINES = [
@@ -14,19 +16,51 @@ const COOKING_LINES = [
   "Almost there…",
 ];
 
+const FALLBACK_EXAMPLE = "a pigeon conductor apologizing over the intercom";
+
 export default function GenerateForm({
   remaining,
   limit,
+  level,
+  examples,
 }: {
   remaining: number;
   limit: number;
+  level: number;
+  // AI-drafted example ideas for today's theme.
+  examples: string[];
 }) {
   const [state, formAction, pending] = useActionState<GenerateState, FormData>(
     createGeneration,
     null
   );
   const [line, setLine] = useState(0);
+  const [style, setStyle] = useState<StyleId>("classic");
+  const [idea, setIdea] = useState("");
+  const [exampleIndex, setExampleIndex] = useState(0);
   const outOfCreations = remaining <= 0;
+
+  // Clear the box after a riff is made, but keep the text when the idea was
+  // rejected (e.g. off-theme) so it can be tweaked instead of retyped.
+  const [handledState, setHandledState] = useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
+    if (state && "created" in state) setIdea("");
+  }
+
+  // Cycle through today's example ideas in the placeholder.
+  const placeholders = examples.length ? examples : [FALLBACK_EXAMPLE];
+  useEffect(() => {
+    if (placeholders.length < 2) return;
+    const timer = setInterval(() => setExampleIndex((i) => i + 1), 4000);
+    return () => clearInterval(timer);
+  }, [placeholders.length]);
+
+  // Let the header animate the XP from a new riff.
+  const createdXp = state && "created" in state ? state.xp : null;
+  useEffect(() => {
+    if (createdXp !== null) announceXp(createdXp);
+  }, [createdXp, state]);
 
   useEffect(() => {
     if (!pending) return;
@@ -39,7 +73,45 @@ export default function GenerateForm({
 
   return (
     <div className="flex flex-col gap-6">
-      <form action={formAction} className="flex flex-col gap-3">
+      <form
+        // Submitted by hand (not `action`) so React doesn't reset the box afterwards.
+        onSubmit={(e) => {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          startTransition(() => formAction(data));
+        }}
+        className="flex flex-col gap-3"
+      >
+        <input type="hidden" name="style" value={style} />
+        <fieldset disabled={pending || outOfCreations}>
+          <legend className="mb-2 text-sm font-semibold text-white/90">Art style</legend>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(STYLES) as StyleId[]).map((id) => {
+              const s = STYLES[id];
+              const locked = s.level > level;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setStyle(id)}
+                  aria-pressed={style === id}
+                  title={locked ? `Unlocks at level ${s.level}` : s.label}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                    style === id
+                      ? "bg-white text-stone-900"
+                      : locked
+                        ? "cursor-not-allowed bg-white/5 text-white/40"
+                        : "bg-white/15 text-white hover:bg-white/25"
+                  }`}
+                >
+                  {locked ? "🔒" : s.emoji} {s.label}
+                  {locked && <span className="ml-1 text-xs">Lv {s.level}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
         <label htmlFor="idea" className="text-sm font-semibold text-white/90">
           Your idea for today&apos;s theme
         </label>
@@ -52,7 +124,9 @@ export default function GenerateForm({
             maxLength={200}
             autoComplete="off"
             disabled={pending || outOfCreations}
-            placeholder="a pigeon conductor apologizing over the intercom"
+            value={idea}
+            onChange={(e) => setIdea(e.target.value)}
+            placeholder={`e.g. ${placeholders[exampleIndex % placeholders.length]}`}
             className="min-w-0 flex-1 rounded-full border-0 bg-white px-5 py-3.5 text-base text-stone-900 shadow-inner placeholder:text-stone-400 focus:ring-4 focus:ring-brand/50 focus:outline-none disabled:opacity-60"
           />
           <button
@@ -88,7 +162,14 @@ export default function GenerateForm({
       )}
 
       {!pending && state && "error" in state && (
-        <p className="rounded-2xl bg-red-500/20 px-4 py-3 text-sm text-red-100 ring-1 ring-red-400/40" role="alert">
+        <p
+          className={`rounded-2xl px-4 py-3 text-sm ring-1 ${
+            state.offTheme
+              ? "bg-amber-400/15 text-amber-100 ring-amber-300/40"
+              : "bg-red-500/20 text-red-100 ring-red-400/40"
+          }`}
+          role="alert"
+        >
           {state.error}
         </p>
       )}

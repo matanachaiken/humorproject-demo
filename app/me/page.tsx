@@ -6,12 +6,14 @@ import {
   toRiffs,
   type GenerationRow,
 } from "@/lib/generations";
+import { LEVELS, describeUnlock, levelInfo } from "@/lib/progression";
 import RiffGrid from "@/app/_components/RiffGrid";
 
 export const metadata = { title: "My riffs" };
 
 export default async function MePage() {
-  const { supabase, user, profile } = await requireCompleteProfile();
+  const { supabase, user, profile, progress } = await requireCompleteProfile();
+  const info = levelInfo(progress.xp);
 
   const [{ data: mine }, { data: everyone }, { count: judged }, winners] = await Promise.all([
     supabase
@@ -82,7 +84,73 @@ export default async function MePage() {
         </div>
       </div>
 
-      <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <section className="mt-8 grid gap-3 md:grid-cols-3" aria-label="Your progress">
+        <div className="rounded-3xl bg-[#1c1714] p-6 text-white md:col-span-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="font-display text-3xl font-extrabold">
+              Level {info.level} <span className="text-white/60">· {info.title}</span>
+            </p>
+            <p className="text-sm text-white/70 tabular-nums">{info.xp} XP</p>
+          </div>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/15">
+            <div
+              className="h-full rounded-full bg-brand"
+              style={{ width: `${Math.round(info.progress * 100)}%` }}
+            />
+          </div>
+          <p className="mt-3 text-sm text-white/80">
+            {info.next ? (
+              <>
+                <span className="font-semibold text-white">{info.toNext} XP</span> to Level{" "}
+                {info.next.level}: {describeUnlock(info.next.unlock).emoji}{" "}
+                {describeUnlock(info.next.unlock).label}
+              </>
+            ) : (
+              "Max level. You're a Legend. 🌈"
+            )}
+          </p>
+        </div>
+        <div className="rounded-3xl border border-line bg-surface p-6">
+          <p className="font-display text-3xl font-extrabold">🔥 {progress.streak}</p>
+          <p className="text-muted">day streak</p>
+          <p className="mt-3 text-sm text-muted">
+            Best: <span className="font-semibold text-ink">{progress.bestStreak}</span>
+            {" · "}
+            🧊 Freezes: <span className="font-semibold text-ink">{progress.streakFreezes}</span>
+          </p>
+        </div>
+      </section>
+
+      <h2 className="mt-10 mb-4 font-display text-2xl font-bold">Your unlock path</h2>
+      <ol className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {LEVELS.map((l) => {
+          const unlock = describeUnlock(l.unlock);
+          const reached = info.level >= l.level;
+          const next = info.next?.level === l.level;
+          return (
+            <li
+              key={l.level}
+              className={`rounded-2xl border p-3 ${
+                reached
+                  ? "border-brand/40 bg-brand-soft/60 dark:bg-brand/10"
+                  : next
+                    ? "border-2 border-dashed border-brand bg-surface"
+                    : "border-line bg-surface opacity-60"
+              }`}
+            >
+              <p className="flex items-center justify-between text-xs font-bold text-muted">
+                Lv {l.level} <span>{reached ? "✓" : "🔒"}</span>
+              </p>
+              <p className="mt-0.5 font-semibold">{l.title}</p>
+              <p className="mt-1 text-xs text-muted">
+                {unlock.emoji} {unlock.label}
+              </p>
+            </li>
+          );
+        })}
+      </ol>
+
+      <dl className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => (
           <div key={s.label} className="rounded-3xl border border-line bg-surface p-4">
             <dt className="text-xs font-medium text-muted">{s.label}</dt>
