@@ -2,9 +2,11 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUDIENCE, generateJson } from "@/lib/ai";
-import { nyToday } from "@/lib/day";
+import { after } from "next/server";
+import { nyNextDayStart, nyToday } from "@/lib/day";
 
 export type DailyTheme = {
+  writers_room?: boolean;
   day: string;
   theme: string;
   source_title: string | null;
@@ -14,7 +16,7 @@ export type DailyTheme = {
 const SUBREDDITS = ["nyc", "AskNYC", "Columbia", "college"];
 
 // Used only when both Reddit and Gemini are unavailable.
-const FALLBACK_THEMES = [
+export const FALLBACK_THEMES = [
   "Midwest kid rides the subway for the first time",
   "Your RA as a Renaissance painting",
   "Pigeons running Wall Street",
@@ -29,11 +31,11 @@ const FALLBACK_THEMES = [
   "The Low Steps on the first warm day",
 ];
 
-type RedditPost = { title: string; url: string; subreddit: string };
+export type RedditPost = { title: string; url: string; subreddit: string };
 
 // Top posts of the day from a few subreddits, via Reddit's public RSS feed.
 // One combined request, because Reddit rate-limits back-to-back calls.
-async function fetchTrendingPosts(): Promise<RedditPost[]> {
+export async function fetchTrendingPosts(): Promise<RedditPost[]> {
   const res = await fetch(
     `https://www.reddit.com/r/${SUBREDDITS.join("+")}/top/.rss?t=day&limit=25`,
     {
@@ -100,6 +102,31 @@ of year in New York and in the college semester. Return it with source_index -1.
 type PickedTheme = DailyTheme & { llm_prompt: string | null; text_model: string | null };
 
 async function pickTheme(day: string): Promise<PickedTheme> {
+  // The Writers' Room's top-voted candidate wins, if anyone voted for this day.
+  const admin = createAdminClient();
+  const { data: winner } = admin
+    ? await admin
+        .from("theme_candidates")
+        .select("theme, source_title, source_url, votes")
+        .eq("for_day", day)
+        .gt("votes", 0)
+        .order("votes", { ascending: false })
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+  if (winner) {
+    return {
+      day,
+      theme: winner.theme,
+      source_title: winner.source_title,
+      source_url: winner.source_url,
+      writers_room: true,
+      llm_prompt: null,
+      text_model: null,
+    };
+  }
+
   let posts: RedditPost[] = [];
   try {
     posts = await fetchTrendingPosts();
@@ -151,7 +178,7 @@ export async function getTodaysTheme(): Promise<DailyTheme> {
   const reader = admin ?? (await createClient());
   const { data: existing } = await reader
     .from("daily_themes")
-    .select("day, theme, source_title, source_url")
+    .select("day, theme, source_title, source_url, writers_room")
     .eq("day", day)
     .maybeSingle<DailyTheme>();
   if (existing) return (remembered = existing);
@@ -159,11 +186,19 @@ export async function getTodaysTheme(): Promise<DailyTheme> {
   const picked = await pickTheme(day);
   if (!admin) return picked;
 
+  // A new day just started: have the Writers' Room's options for tomorrow
+  // ready before anyone opens it, without slowing down this response.
+  after(async () => {
+    // Imported here because lib/writersRoom imports this module.
+    const { ensureCandidates } = await import("@/lib/writersRoom");
+    await ensureCandidates(nyToday(new Date(nyNextDayStart())));
+  });
+
   // If two visitors race, the first insert wins and both read it back.
   await admin.from("daily_themes").upsert(picked, { onConflict: "day", ignoreDuplicates: true });
   const { data: saved } = await admin
     .from("daily_themes")
-    .select("day, theme, source_title, source_url")
+    .select("day, theme, source_title, source_url, writers_room")
     .eq("day", day)
     .single<DailyTheme>();
   return (remembered = saved ?? picked);

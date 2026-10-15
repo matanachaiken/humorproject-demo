@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { nyToday } from "@/lib/day";
 
 export type Profile = {
   id: string;
@@ -28,19 +29,65 @@ export async function getSessionUser(
   return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
 }
 
+export type Progress = {
+  xp: number;
+  streak: number;
+  bestStreak: number;
+  streakFreezes: number;
+  seenLevel: number;
+  // Won an extra creation on today's wheel.
+  hasBonusCreation: boolean;
+  spunToday: boolean;
+};
+
+const NEW_PLAYER: Progress = {
+  xp: 0,
+  streak: 0,
+  bestStreak: 0,
+  streakFreezes: 0,
+  seenLevel: 1,
+  hasBonusCreation: false,
+  spunToday: false,
+};
+
 // Cached per request, so the header and the page share one lookup.
 export const getUserAndProfile = cache(async () => {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
-  if (!user) return { supabase, user: null, profile: null };
+  if (!user) return { supabase, user: null, profile: null, progress: null };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, email, first_name, last_name, avatar_url")
-    .eq("id", user.id)
-    .maybeSingle<Profile>();
+  const today = nyToday();
+  const [{ data: profile }, { data: stats }, { count: spins }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, email, first_name, last_name, avatar_url")
+      .eq("id", user.id)
+      .maybeSingle<Profile>(),
+    supabase
+      .from("player_stats")
+      .select("xp, streak, best_streak, streak_freezes, seen_level, bonus_creation_day")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("wheel_spins")
+      .select("day", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("day", today),
+  ]);
 
-  return { supabase, user, profile };
+  const progress: Progress = stats
+    ? {
+        xp: stats.xp,
+        streak: stats.streak,
+        bestStreak: stats.best_streak,
+        streakFreezes: stats.streak_freezes,
+        seenLevel: stats.seen_level,
+        hasBonusCreation: stats.bonus_creation_day === today,
+        spunToday: (spins ?? 0) > 0,
+      }
+    : { ...NEW_PLAYER, spunToday: (spins ?? 0) > 0 };
+
+  return { supabase, user, profile, progress };
 });
 
 // Use in protected pages: sends signed-out users to /login and
@@ -49,7 +96,7 @@ export async function requireCompleteProfile() {
   const result = await getUserAndProfile();
   if (!result.user) redirect("/login");
   if (!isProfileComplete(result.profile)) redirect("/onboarding");
-  return { ...result, user: result.user, profile: result.profile! };
+  return { ...result, user: result.user, profile: result.profile!, progress: result.progress! };
 }
 
 // Where to send someone after signing in. Only same-site paths are allowed,

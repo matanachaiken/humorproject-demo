@@ -10,9 +10,6 @@ const TEXT_MODELS = [
 ];
 export const IMAGE_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 
-// Images each user can create per day (New York time).
-export const DAILY_LIMIT = 3;
-
 // Who we're making content for. Shared by every prompt so the voice is consistent.
 export const AUDIENCE = `The audience is Columbia College students like Sam: a junior who is \
 chronically online, grew up in the Midwest, is still new to New York City, lives in \

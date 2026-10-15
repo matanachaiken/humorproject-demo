@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { nyToday } from "@/lib/day";
 
 // The feed, battles, riff pages and Hall of Fame are public (read-only when
 // signed out). Pages about *you* need an account.
@@ -33,6 +34,21 @@ export async function proxy(request: NextRequest) {
   // (asymmetric signing keys), so navigations don't wait on Supabase Auth.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims?.sub ?? null;
+
+  // First visit of the day extends the streak and grants visit XP. A cookie
+  // remembers today's check-in so this costs one database call per day.
+  const checkInKey = `${user}:${nyToday()}`;
+  if (user && request.cookies.get("dr_checkin")?.value !== checkInKey) {
+    const { error } = await supabase.rpc("check_in");
+    if (!error) {
+      response.cookies.set("dr_checkin", checkInKey, {
+        path: "/",
+        maxAge: 60 * 60 * 36,
+        sameSite: "lax",
+        httpOnly: true,
+      });
+    }
+  }
 
   const { pathname } = request.nextUrl;
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));

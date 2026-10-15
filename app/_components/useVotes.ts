@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { castVote } from "@/app/feed/actions";
 import type { Riff } from "@/lib/generations";
+import { announceXp } from "@/lib/xpEvents";
 
 type Tally = { vote: number; score: number };
 
@@ -44,7 +45,9 @@ export function useVotes({
     if (!result.ok) {
       setOverrides((o) => ({ ...o, [riff.id]: previous }));
       setError(result.error);
+      return;
     }
+    announceXp(result.xp);
   }
 
   return {

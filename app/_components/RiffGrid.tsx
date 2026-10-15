@@ -127,7 +127,7 @@ export default function RiffGrid({
       {votes.error && (
         <p
           role="status"
-          className="fixed inset-x-4 bottom-20 z-50 mx-auto max-w-sm animate-fade-in rounded-2xl bg-ink px-4 py-3 text-center text-sm font-medium text-bg shadow-lg sm:bottom-6"
+          className="fixed inset-x-4 bottom-20 z-50 mx-auto max-w-sm animate-fade-in rounded-2xl bg-ink px-4 py-3 text-center text-sm font-medium text-bg shadow-lg lg:bottom-6"
         >
           {votes.error}
         </p>

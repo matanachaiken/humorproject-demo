@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { Riff } from "@/lib/generations";
+import { STYLES } from "@/lib/progression";
+import LevelBadge from "./LevelBadge";
 import { battleRecord } from "./RiffCard";
 import ShareButton from "./ShareButton";
 import VoteButtons from "./VoteButtons";
@@ -36,8 +38,14 @@ export default function RiffDetails({
           {riff.caption}
         </h2>
         <p className="mt-2 text-muted">
-          <span className="font-medium text-ink">{riff.isMine ? "You" : riff.creator}</span> asked
-          for “{riff.idea}”
+          <span className="font-medium text-ink">{riff.isMine ? "You" : riff.creator}</span>{" "}
+          <LevelBadge level={riff.creatorLevel} /> asked for “{riff.idea}”
+          {riff.style !== "classic" && (
+            <>
+              {" "}
+              in {STYLES[riff.style].emoji} {STYLES[riff.style].label}
+            </>
+          )}
         </p>
       </div>
 

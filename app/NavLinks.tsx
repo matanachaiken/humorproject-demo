@@ -11,18 +11,27 @@ const icons = {
     <path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8 20h8M9.5 17h5" />
   ),
   me: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" />,
+  room: <path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9zM4 10l1.5-5 15 3.5L20 10M9 5.6l-1 4.2M14 6.8l-1 3.2" />,
 };
 
-type Item = { href: string; label: string; short?: string; icon: keyof typeof icons };
+type Item = {
+  href: string;
+  label: string;
+  short?: string;
+  icon: keyof typeof icons;
+  locked?: boolean;
+};
 
 // "header" renders the inline desktop links; "tabbar" the phone tab bar. The
 // tab bar must sit outside the header: the header's backdrop-filter would make
 // it the containing block for `position: fixed`, pinning the bar to the header.
 export default function NavLinks({
   signedIn,
+  writersLocked,
   variant,
 }: {
   signedIn: boolean;
+  writersLocked: boolean;
   variant: "header" | "tabbar";
 }) {
   const pathname = usePathname();
@@ -30,6 +39,13 @@ export default function NavLinks({
     { href: "/feed", label: "Feed", icon: "feed" },
     { href: "/battle", label: "Which is funnier?", short: "Battle", icon: "battle" },
     { href: "/hall-of-fame", label: "Hall of Fame", icon: "trophy" },
+    {
+      href: "/writers-room",
+      label: "Writers' Room",
+      short: "Writers",
+      icon: "room",
+      locked: writersLocked,
+    },
     signedIn
       ? { href: "/me", label: "My riffs", icon: "me" }
       : { href: "/login", label: "Sign in", icon: "me" },
@@ -41,38 +57,40 @@ export default function NavLinks({
   const isActive = (href: string) => current === href || current.startsWith(`${href}/`);
 
   if (variant === "header") {
-    // Desktop only. "Me" lives on the avatar instead.
+    // Wide screens only. "Me" lives on the avatar instead.
     return (
-      <nav className="hidden items-center gap-1 text-sm font-medium sm:flex">
-        {items.slice(0, 3).map((item) => (
+      <nav className="hidden items-center gap-1 text-sm font-medium lg:flex">
+        {items.slice(0, 4).map((item) => (
           <Link
             key={item.href}
             href={item.href}
             onClick={() => setClicked({ from: pathname, to: item.href })}
             aria-current={isActive(item.href) ? "page" : undefined}
-            className={`rounded-full px-4 py-2 transition-colors ${
+            className={`rounded-full px-3 py-2 whitespace-nowrap transition-colors xl:px-4 ${
               isActive(item.href)
                 ? "bg-ink text-bg"
                 : "text-muted hover:bg-surface-2 hover:text-ink"
             }`}
           >
-            {item.label}
+            <span className="xl:hidden">{item.short ?? item.label}</span>
+            <span className="hidden xl:inline">{item.label}</span>
+            {item.locked && <span aria-label="locked"> 🔒</span>}
           </Link>
         ))}
       </nav>
     );
   }
 
-  // Phones: a tab bar along the bottom, within thumb reach.
+  // Phones and tablets: a tab bar along the bottom, within thumb reach.
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
       {items.map((item) => (
         <Link
           key={item.href}
           href={item.href}
           onClick={() => setClicked({ from: pathname, to: item.href })}
           aria-current={isActive(item.href) ? "page" : undefined}
-          className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
+          className={`relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
             isActive(item.href) ? "text-brand" : "text-muted"
           }`}
         >
@@ -88,6 +106,11 @@ export default function NavLinks({
           >
             {icons[item.icon]}
           </svg>
+          {item.locked && (
+            <span aria-label="locked" className="absolute top-1 right-[calc(50%-1.4rem)] text-[10px]">
+              🔒
+            </span>
+          )}
           {item.short ?? item.label}
         </Link>
       ))}

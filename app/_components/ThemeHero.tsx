@@ -30,6 +30,14 @@ export default function ThemeHero({
         <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.05] font-extrabold tracking-tight text-balance sm:text-6xl">
           {theme.theme}
         </h1>
+        {theme.writers_room && (
+          <p className="mt-3 text-sm font-semibold text-white/90">
+            🎬 Picked by the{" "}
+            <Link href="/writers-room" className="underline underline-offset-4 hover:text-white">
+              Writers&apos; Room
+            </Link>
+          </p>
+        )}
         {theme.source_title && theme.source_url && (
           <p className="mt-3 max-w-2xl text-sm text-white/70">
             Inspired by Reddit:{" "}

@@ -1,11 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { nyToday } from "@/lib/day";
+import { isStyleId, levelInfo, type StyleId } from "@/lib/progression";
 
 // Columns signed-out visitors may read (see the week 5 migration).
 // Signed-in users also get user_id so we can mark their own images.
 const PUBLIC_COLUMNS =
-  "id, creator_name, theme_day, theme, user_input, image_prompt, caption, storage_path, created_at, score, wins, losses";
+  "id, creator_name, theme_day, theme, user_input, image_prompt, caption, storage_path, created_at, score, wins, losses, style";
 
 export function generationColumns(signedIn: boolean) {
   return signedIn ? `${PUBLIC_COLUMNS}, user_id` : PUBLIC_COLUMNS;
@@ -24,6 +25,7 @@ export type GenerationRow = {
   score: number;
   wins: number;
   losses: number;
+  style: string;
   user_id?: string;
 };
 
@@ -43,29 +45,36 @@ export type Riff = {
   myVote: number;
   wins: number;
   losses: number;
+  style: StyleId;
+  creatorLevel: number;
 };
 
 export function imageUrl(supabase: SupabaseClient, storagePath: string) {
   return supabase.storage.from("generations").getPublicUrl(storagePath).data.publicUrl;
 }
 
-// Adds image URLs and the signed-in user's own votes to a list of rows.
+// Adds image URLs, creator levels and the signed-in user's own votes to rows.
 export async function toRiffs(
   supabase: SupabaseClient,
   userId: string | null,
   rows: GenerationRow[]
 ): Promise<Riff[]> {
+  const ids = rows.map((r) => r.id);
+  const [votes, creators] = await Promise.all([
+    userId && ids.length
+      ? supabase
+          .from("generation_votes")
+          .select("generation_id, vote")
+          .eq("user_id", userId)
+          .in("generation_id", ids)
+      : { data: [] as { generation_id: number; vote: number }[] },
+    ids.length ? supabase.rpc("creator_xp", { ids }) : { data: [] },
+  ]);
   const myVotes = new Map<number, number>();
-  if (userId && rows.length) {
-    const { data } = await supabase
-      .from("generation_votes")
-      .select("generation_id, vote")
-      .eq("user_id", userId)
-      .in(
-        "generation_id",
-        rows.map((r) => r.id)
-      );
-    for (const v of data ?? []) myVotes.set(v.generation_id, v.vote);
+  for (const v of votes.data ?? []) myVotes.set(v.generation_id, v.vote);
+  const creatorXp = new Map<number, number>();
+  for (const c of (creators.data ?? []) as { generation_id: number; xp: number }[]) {
+    creatorXp.set(c.generation_id, c.xp);
   }
 
   return rows.map((r) => ({
@@ -82,6 +91,8 @@ export async function toRiffs(
     myVote: myVotes.get(r.id) ?? 0,
     wins: r.wins,
     losses: r.losses,
+    style: isStyleId(r.style) ? r.style : "classic",
+    creatorLevel: levelInfo(creatorXp.get(r.id) ?? 0).level,
   }));
 }
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getUserAndProfile, isProfileComplete } from "@/lib/auth";
-import { DAILY_LIMIT } from "@/lib/ai";
+import { dailyLimit, levelInfo } from "@/lib/progression";
 import { getTodaysTheme } from "@/lib/theme";
 import { nyDayStart } from "@/lib/day";
 import {
@@ -59,7 +59,7 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
 }
 
 async function FeedHero() {
-  const { supabase, user } = await getUserAndProfile();
+  const { supabase, user, progress } = await getUserAndProfile();
   const [theme, usedToday, winners] = await Promise.all([
     getTodaysTheme(),
     user
@@ -77,8 +77,8 @@ async function FeedHero() {
   return (
     <>
       <ThemeHero theme={theme}>
-        {user ? (
-          <GenerateForm remaining={Math.max(0, DAILY_LIMIT - usedToday)} limit={DAILY_LIMIT} />
+        {user && progress ? (
+          <GenerateFormFor xp={progress.xp} bonus={progress.hasBonusCreation} used={usedToday} />
         ) : (
           <SignedOutCta />
         )}
@@ -97,6 +97,12 @@ async function FeedHero() {
       )}
     </>
   );
+}
+
+function GenerateFormFor({ xp, bonus, used }: { xp: number; bonus: boolean; used: number }) {
+  const { level } = levelInfo(xp);
+  const limit = dailyLimit(level, bonus);
+  return <GenerateForm remaining={Math.max(0, limit - used)} limit={limit} level={level} />;
 }
 
 async function FeedList({ tab }: { tab: Tab }) {

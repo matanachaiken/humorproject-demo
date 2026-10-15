@@ -10,7 +10,13 @@ const nowInSeconds = () => Math.floor(Date.now() / 1000);
 
 // "New theme in 5h 12m", ticking. Renders nothing on the server so the
 // server and browser clocks never disagree during hydration.
-export default function Countdown({ until }: { until: string }) {
+export default function Countdown({
+  until,
+  label = "New theme in",
+}: {
+  until: string;
+  label?: string;
+}) {
   const now = useSyncExternalStore(subscribe, nowInSeconds, () => null);
   if (now === null) return null;
 
@@ -19,5 +25,9 @@ export default function Countdown({ until }: { until: string }) {
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
   const s = left % 60;
-  return <>New theme in {h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`}</>;
+  return (
+    <>
+      {label} {h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`}
+    </>
+  );
 }

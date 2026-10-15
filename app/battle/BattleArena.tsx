@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Riff } from "@/lib/generations";
 import SignInPrompt from "@/app/_components/SignInPrompt";
+import { announceXp } from "@/lib/xpEvents";
 import { judgeMatchup } from "./actions";
 
 type Records = Record<number, { wins: number; losses: number }>;
@@ -41,6 +42,7 @@ export default function BattleArena({
       return;
     }
     setRecords(result.records);
+    announceXp(result.xp);
   }
 
   // After the reveal, move on by itself.

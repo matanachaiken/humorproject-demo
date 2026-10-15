@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import ShareButton from "@/app/_components/ShareButton";
+import { STYLES, type StyleId } from "@/lib/progression";
+import { announceXp } from "@/lib/xpEvents";
 import { createGeneration, type GenerateState } from "./actions";
 
 const COOKING_LINES = [
@@ -17,16 +19,25 @@ const COOKING_LINES = [
 export default function GenerateForm({
   remaining,
   limit,
+  level,
 }: {
   remaining: number;
   limit: number;
+  level: number;
 }) {
   const [state, formAction, pending] = useActionState<GenerateState, FormData>(
     createGeneration,
     null
   );
   const [line, setLine] = useState(0);
+  const [style, setStyle] = useState<StyleId>("classic");
   const outOfCreations = remaining <= 0;
+
+  // Let the header animate the XP from a new riff.
+  const createdXp = state && "created" in state ? state.xp : null;
+  useEffect(() => {
+    if (createdXp !== null) announceXp(createdXp);
+  }, [createdXp, state]);
 
   useEffect(() => {
     if (!pending) return;
@@ -40,6 +51,36 @@ export default function GenerateForm({
   return (
     <div className="flex flex-col gap-6">
       <form action={formAction} className="flex flex-col gap-3">
+        <input type="hidden" name="style" value={style} />
+        <fieldset disabled={pending || outOfCreations}>
+          <legend className="mb-2 text-sm font-semibold text-white/90">Art style</legend>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(STYLES) as StyleId[]).map((id) => {
+              const s = STYLES[id];
+              const locked = s.level > level;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setStyle(id)}
+                  aria-pressed={style === id}
+                  title={locked ? `Unlocks at level ${s.level}` : s.label}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                    style === id
+                      ? "bg-white text-stone-900"
+                      : locked
+                        ? "cursor-not-allowed bg-white/5 text-white/40"
+                        : "bg-white/15 text-white hover:bg-white/25"
+                  }`}
+                >
+                  {locked ? "🔒" : s.emoji} {s.label}
+                  {locked && <span className="ml-1 text-xs">Lv {s.level}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
         <label htmlFor="idea" className="text-sm font-semibold text-white/90">
           Your idea for today&apos;s theme
         </label>

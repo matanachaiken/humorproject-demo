@@ -1,6 +1,8 @@
 "use client";
 
 import type { Riff } from "@/lib/generations";
+import { STYLES, frameFor } from "@/lib/progression";
+import LevelBadge from "./LevelBadge";
 import VoteButtons from "./VoteButtons";
 
 export const MEDALS = [
@@ -38,53 +40,71 @@ export default function RiffCard({
 }) {
   const medal = rank !== undefined ? MEDALS[rank] : undefined;
   const record = battleRecord(riff);
+  const frame = frameFor(riff.creatorLevel);
+  const style = riff.style !== "classic" ? STYLES[riff.style] : null;
 
   return (
-    <article
-      className={`group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-sm transition-shadow hover:shadow-md ${
-        medal ? `ring-2 ${medal.ring}` : ""
-      }`}
+    // Level 7+ creators get a gold frame, level 10 a holographic one.
+    <div
+      className={`flex h-full flex-col rounded-[1.65rem] ${
+        frame === "holo" ? "frame-holo p-[3px]" : frame === "gold" ? "frame-gold p-[3px]" : ""
+      } ${medal ? `ring-2 ring-offset-2 ring-offset-bg ${medal.ring}` : ""}`}
     >
-      <button
-        type="button"
-        onClick={onOpen}
-        className="relative block aspect-square w-full overflow-hidden bg-surface-2"
-        aria-label={`Open “${riff.caption}”`}
+      <article
+        className={`group flex flex-1 flex-col overflow-hidden rounded-3xl bg-surface shadow-sm transition-shadow hover:shadow-md ${
+          frame ? "" : "border border-line"
+        }`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={riff.imageUrl}
-          alt={riff.caption}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-        />
-        {medal && (
-          <span className="absolute top-3 left-3 rounded-full bg-black/70 px-3 py-1 text-sm font-semibold text-white backdrop-blur">
-            {medal.emoji} {medal.label}
-          </span>
-        )}
-        {riff.isMine && (
-          <span className="absolute top-3 right-3 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">
-            Yours
-          </span>
-        )}
-      </button>
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <button type="button" onClick={onOpen} className="text-left">
-          <p className="line-clamp-2 text-[17px] leading-snug font-semibold">{riff.caption}</p>
-          <p className="mt-1 truncate text-sm text-muted">
-            {riff.isMine ? "You" : riff.creator} · “{riff.idea}”
-          </p>
-        </button>
-        <div className="mt-auto flex items-center justify-between gap-2">
-          <VoteButtons score={score} vote={vote} onVote={onVote} disabled={pending} />
-          {record && (
-            <span className="text-xs text-muted" title={`Won ${record.rate}% of ${record.battles}`}>
-              ⚡ {record.rate}% wins
+        <button
+          type="button"
+          onClick={onOpen}
+          className="relative block aspect-square w-full overflow-hidden bg-surface-2"
+          aria-label={`Open “${riff.caption}”`}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={riff.imageUrl}
+            alt={riff.caption}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+          {medal && (
+            <span className="absolute top-3 left-3 rounded-full bg-black/70 px-3 py-1 text-sm font-semibold text-white backdrop-blur">
+              {medal.emoji} {medal.label}
             </span>
           )}
+          {riff.isMine && (
+            <span className="absolute top-3 right-3 rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">
+              Yours
+            </span>
+          )}
+          {style && (
+            <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+              {style.emoji} {style.label}
+            </span>
+          )}
+        </button>
+        <div className="flex flex-1 flex-col gap-3 p-4">
+          <button type="button" onClick={onOpen} className="text-left">
+            <p className="line-clamp-2 text-[17px] leading-snug font-semibold">{riff.caption}</p>
+            <p className="mt-1 truncate text-sm text-muted">
+              {riff.isMine ? "You" : riff.creator} <LevelBadge level={riff.creatorLevel} /> · “
+              {riff.idea}”
+            </p>
+          </button>
+          <div className="mt-auto flex items-center justify-between gap-2">
+            <VoteButtons score={score} vote={vote} onVote={onVote} disabled={pending} />
+            {record && (
+              <span
+                className="text-xs text-muted"
+                title={`Won ${record.rate}% of ${record.battles}`}
+              >
+                ⚡ {record.rate}% wins
+              </span>
+            )}
+          </div>
         </div>
-      </div>
-    </article>
+      </article>
+    </div>
   );
 }

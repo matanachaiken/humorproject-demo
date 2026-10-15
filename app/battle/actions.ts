@@ -1,9 +1,10 @@
 "use server";
 
 import { getUserAndProfile } from "@/lib/auth";
+import { readXp } from "@/lib/xp";
 
 export type JudgeResult =
-  | { ok: true; records: Record<number, { wins: number; losses: number }> }
+  | { ok: true; records: Record<number, { wins: number; losses: number }>; xp: number }
   | { ok: false; error: string };
 
 export async function judgeMatchup(winnerId: number, loserId: number): Promise<JudgeResult> {
@@ -27,11 +28,11 @@ export async function judgeMatchup(winnerId: number, loserId: number): Promise<J
     };
   }
 
-  const { data } = await supabase
-    .from("generations")
-    .select("id, wins, losses")
-    .in("id", [winnerId, loserId]);
+  const [{ data }, xp] = await Promise.all([
+    supabase.from("generations").select("id, wins, losses").in("id", [winnerId, loserId]),
+    readXp(supabase, user.id),
+  ]);
   const records: Record<number, { wins: number; losses: number }> = {};
   for (const row of data ?? []) records[row.id] = { wins: row.wins, losses: row.losses };
-  return { ok: true, records };
+  return { ok: true, records, xp };
 }
