@@ -78,7 +78,12 @@ async function FeedHero() {
     <>
       <ThemeHero theme={theme}>
         {user && progress ? (
-          <GenerateFormFor xp={progress.xp} bonus={progress.hasBonusCreation} used={usedToday} />
+          <GenerateFormFor
+            xp={progress.xp}
+            bonus={progress.hasBonusCreation}
+            used={usedToday}
+            examples={theme.idea_examples ?? []}
+          />
         ) : (
           <SignedOutCta />
         )}
@@ -99,10 +104,27 @@ async function FeedHero() {
   );
 }
 
-function GenerateFormFor({ xp, bonus, used }: { xp: number; bonus: boolean; used: number }) {
+function GenerateFormFor({
+  xp,
+  bonus,
+  used,
+  examples,
+}: {
+  xp: number;
+  bonus: boolean;
+  used: number;
+  examples: string[];
+}) {
   const { level } = levelInfo(xp);
   const limit = dailyLimit(level, bonus);
-  return <GenerateForm remaining={Math.max(0, limit - used)} limit={limit} level={level} />;
+  return (
+    <GenerateForm
+      remaining={Math.max(0, limit - used)}
+      limit={limit}
+      level={level}
+      examples={examples}
+    />
+  );
 }
 
 async function FeedList({ tab }: { tab: Tab }) {

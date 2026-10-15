@@ -371,6 +371,9 @@ grant execute on function public.spin_wheel() to authenticated;
 -- level 5+ players (500+ XP) vote. The winner becomes tomorrow's theme.
 alter table public.daily_themes add column writers_room boolean not null default false;
 
+-- Example ideas for the day's theme, shown as the create box's placeholder.
+alter table public.daily_themes add column idea_examples text[];
+
 create table public.theme_candidates (
   id bigint generated always as identity primary key,
   for_day date not null,

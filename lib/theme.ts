@@ -7,6 +7,7 @@ import { nyNextDayStart, nyToday } from "@/lib/day";
 
 export type DailyTheme = {
   writers_room?: boolean;
+  idea_examples?: string[] | null;
   day: string;
   theme: string;
   source_title: string | null;
@@ -163,8 +164,56 @@ async function pickTheme(day: string): Promise<PickedTheme> {
   }
 }
 
+const examplesSchema = {
+  type: "object",
+  properties: { examples: { type: "array", items: { type: "string" } } },
+  required: ["examples"],
+};
+
+// Three example ideas for the theme, shown in the create box so people see
+// what an on-theme riff looks like. Drafted once per day, after the response.
+const draftingExamplesFor = new Set<string>();
+function draftIdeaExamples(theme: DailyTheme) {
+  const admin = createAdminClient();
+  if (!admin || draftingExamplesFor.has(theme.day)) return;
+  draftingExamplesFor.add(theme.day);
+
+  after(async () => {
+    try {
+      const { result } = await generateJson<{ examples: string[] }>(
+        `You write example prompts for a humor site where users type a silly idea and AI turns it into an image.
+${AUDIENCE}
+
+Today's theme: "${theme.theme}"
+
+Write THREE example ideas a user might type for this theme. Each one is a specific, visual,
+absurd scene in under 70 characters, lowercase, no quotes or hashtags. Make the three
+clearly different from each other, and keep them PG-13.`,
+        examplesSchema
+      );
+      const examples = result.examples
+        .map((e) => e.trim().replace(/^["']|["']$/g, "").slice(0, 90))
+        .filter(Boolean)
+        .slice(0, 3);
+      if (examples.length) {
+        await admin.from("daily_themes").update({ idea_examples: examples }).eq("day", theme.day);
+      }
+    } catch (error) {
+      console.warn("Couldn't draft idea examples:", error);
+      draftingExamplesFor.delete(theme.day);
+    }
+  });
+}
+
 // Kept in memory per server instance, so most requests skip the database.
 let remembered: DailyTheme | null = null;
+
+// Remembers the theme once it's complete; until then, keeps drafting examples.
+function settle(theme: DailyTheme) {
+  if (theme.idea_examples?.length) remembered = theme;
+  else draftIdeaExamples(theme);
+  return theme;
+}
 
 // Today's theme. The first visit of the day picks it and saves it, so
 // everyone sees the same theme all day.
@@ -178,10 +227,10 @@ export async function getTodaysTheme(): Promise<DailyTheme> {
   const reader = admin ?? (await createClient());
   const { data: existing } = await reader
     .from("daily_themes")
-    .select("day, theme, source_title, source_url, writers_room")
+    .select("day, theme, source_title, source_url, writers_room, idea_examples")
     .eq("day", day)
     .maybeSingle<DailyTheme>();
-  if (existing) return (remembered = existing);
+  if (existing) return settle(existing);
 
   const picked = await pickTheme(day);
   if (!admin) return picked;
@@ -198,8 +247,8 @@ export async function getTodaysTheme(): Promise<DailyTheme> {
   await admin.from("daily_themes").upsert(picked, { onConflict: "day", ignoreDuplicates: true });
   const { data: saved } = await admin
     .from("daily_themes")
-    .select("day, theme, source_title, source_url, writers_room")
+    .select("day, theme, source_title, source_url, writers_room, idea_examples")
     .eq("day", day)
     .single<DailyTheme>();
-  return (remembered = saved ?? picked);
+  return settle(saved ?? picked);
 }
