@@ -95,12 +95,12 @@ export default function RiffCard({
           </button>
           <div className="mt-auto flex items-center justify-between gap-2">
             <VoteButtons score={score} vote={vote} onVote={onVote} disabled={pending} />
-            {record && (
+            {riff.wins > 0 && (
               <span
                 className="text-xs text-muted"
-                title={`Won ${record.rate}% of ${record.battles}`}
+                title={`Each battle win is worth a point · won ${record?.rate}% of ${record?.battles}`}
               >
-                ⚡ {record.rate}% wins
+                ⚡ {riff.wins} battle {riff.wins === 1 ? "win" : "wins"}
               </span>
             )}
           </div>

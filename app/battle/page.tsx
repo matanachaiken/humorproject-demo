@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndProfile, isProfileComplete } from "@/lib/auth";
-import { nyDayStart } from "@/lib/day";
+import { nyDayStart, nyToday } from "@/lib/day";
 import { generationColumns, toRiffs, type GenerationRow } from "@/lib/generations";
 import { pickPair } from "@/lib/matchups";
 import BattleArena from "./BattleArena";
@@ -36,7 +36,7 @@ export default async function BattlePage() {
       : Promise.resolve({ count: 0 }),
   ]);
 
-  const pair = pickPair(candidates ?? [], judgedToday ?? []);
+  const pair = pickPair(candidates ?? [], judgedToday ?? [], nyToday());
   const riffs = pair ? await toRiffs(supabase, user?.id ?? null, pair) : null;
   const judgedCount = judgedTotal ?? 0;
   const doneForToday = (judgedToday?.length ?? 0) > 0;
@@ -50,7 +50,8 @@ export default async function BattlePage() {
             Which is funnier?
           </h1>
           <p className="mt-2 text-muted">
-            Two riffs, one winner. Your picks decide each riff&apos;s win rate.
+            Two riffs, one winner. Every win is worth a point, so your picks help decide
+            today&apos;s champion.
           </p>
         </div>
         {user && (

@@ -49,7 +49,7 @@ export default async function RiffPage({ params }: PageProps<"/g/[id]">) {
     .select(generationColumns(Boolean(user)))
     .eq("theme", row.theme)
     .neq("id", row.id)
-    .order("score", { ascending: false })
+    .order("points", { ascending: false })
     .limit(6)
     .overrideTypes<GenerationRow[], { merge: false }>();
   const more = await toRiffs(supabase, user?.id ?? null, siblings ?? []);

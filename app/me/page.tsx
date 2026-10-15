@@ -23,21 +23,21 @@ export default async function MePage() {
       .order("created_at", { ascending: false })
       .limit(500)
       .overrideTypes<GenerationRow[], { merge: false }>(),
-    supabase.from("generations").select("user_id, score").limit(10000),
+    supabase.from("generations").select("user_id, points").limit(10000),
     supabase.from("matchups").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     getDailyWinners(supabase, true, { days: 365, perDay: 1 }),
   ]);
 
   const rows = mine ?? [];
   const riffs = await toRiffs(supabase, user.id, rows);
-  const totalScore = rows.reduce((sum, r) => sum + r.score, 0);
+  const totalScore = rows.reduce((sum, r) => sum + r.points, 0);
   const wins = rows.reduce((sum, r) => sum + r.wins, 0);
   const losses = rows.reduce((sum, r) => sum + r.losses, 0);
   const dailyWins = winners.filter((w) => w.top[0]?.user_id === user.id).length;
 
   // Creator rank by total points across all of their riffs.
   const totals = new Map<string, number>();
-  for (const r of everyone ?? []) totals.set(r.user_id, (totals.get(r.user_id) ?? 0) + r.score);
+  for (const r of everyone ?? []) totals.set(r.user_id, (totals.get(r.user_id) ?? 0) + r.points);
   const rank = rows.length
     ? [...totals.values()].filter((score) => score > totalScore).length + 1
     : null;

@@ -95,7 +95,7 @@ async function FeedHero() {
             day={winners[0].day}
             caption={champ.caption}
             creator={champ.creator_name}
-            score={champ.score}
+            score={champ.points}
             imageUrl={imageUrl(supabase, champ.storage_path)}
           />
         </div>
@@ -135,7 +135,7 @@ async function FeedList({ tab }: { tab: Tab }) {
   query =
     tab === "new"
       ? query.order("created_at", { ascending: false })
-      : query.order("score", { ascending: false }).order("created_at", { ascending: false });
+      : query.order("points", { ascending: false }).order("created_at", { ascending: false });
   const { data, error } = await query.limit(60).overrideTypes<GenerationRow[], { merge: false }>();
 
   if (error) {

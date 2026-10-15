@@ -143,6 +143,7 @@ export default function BattleArena({
         {records ? (
           <>
             <p className="animate-fade-in font-display text-xl font-bold">{verdict}</p>
+            <p className="-mt-2 text-sm text-muted">+1 point to your pick</p>
             <div className="h-1 w-48 overflow-hidden rounded-full bg-surface-2">
               <div className="h-full animate-progress bg-brand" />
             </div>

@@ -12,7 +12,7 @@ import ThemeHero, { SignedOutCta } from "@/app/_components/ThemeHero";
 const STEPS = [
   { emoji: "🗞️", title: "Get the theme", body: "Every midnight AI turns what NYC and college Reddit are buzzing about into a fresh theme." },
   { emoji: "✨", title: "Riff on it", body: "Type a silly idea. AI writes the prompt, draws the image and adds a caption in ~15 seconds." },
-  { emoji: "⚡", title: "Vote & battle", body: "Upvote favorites and play “Which is funnier?” The day's top three enter the Hall of Fame." },
+  { emoji: "⚡", title: "Vote & battle", body: "Upvote favorites and pick winners in “Which is funnier?” Both earn points, and the day's top three enter the Hall of Fame." },
 ];
 
 export default async function Home() {
@@ -24,7 +24,7 @@ export default async function Home() {
     let query = supabase.from("generations").select(generationColumns(false));
     if (since) query = query.gte("created_at", since);
     return query
-      .order("score", { ascending: false })
+      .order("points", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(6)
       .overrideTypes<GenerationRow[], { merge: false }>();

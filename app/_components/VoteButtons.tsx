@@ -45,7 +45,7 @@ export default function VoteButtons({
         className={`min-w-9 text-center font-bold tabular-nums ${size === "lg" ? "text-lg" : ""} ${
           vote === 1 ? "text-brand-strong" : vote === -1 ? "text-indigo-500" : ""
         }`}
-        aria-label={`Score ${score}`}
+        aria-label={`${score} points`}
       >
         {score}
       </span>

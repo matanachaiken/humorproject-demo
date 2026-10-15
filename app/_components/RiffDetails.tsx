@@ -50,7 +50,14 @@ export default function RiffDetails({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <VoteButtons score={score} vote={vote} onVote={onVote} disabled={pending} size="lg" />
+        <div className="flex flex-col gap-1">
+          <VoteButtons score={score} vote={vote} onVote={onVote} disabled={pending} size="lg" />
+          {/* Points = vote score + battle wins (see lib/generations.ts). */}
+          <span className="text-xs text-muted tabular-nums">
+            {score} {score === 1 ? "point" : "points"}: {score - riff.wins} from votes + {riff.wins}{" "}
+            from battles
+          </span>
+        </div>
         <ShareButton id={riff.id} caption={riff.caption} />
         {showPageLink && (
           <Link href={`/g/${riff.id}`} className="text-sm font-medium text-muted underline-offset-4 hover:text-ink hover:underline">

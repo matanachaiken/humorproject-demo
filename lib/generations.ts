@@ -6,7 +6,7 @@ import { isStyleId, levelInfo, type StyleId } from "@/lib/progression";
 // Columns signed-out visitors may read (see the week 5 migration).
 // Signed-in users also get user_id so we can mark their own images.
 const PUBLIC_COLUMNS =
-  "id, creator_name, theme_day, theme, user_input, image_prompt, caption, storage_path, created_at, score, wins, losses, style";
+  "id, creator_name, theme_day, theme, user_input, image_prompt, caption, storage_path, created_at, score, wins, losses, points, style";
 
 export function generationColumns(signedIn: boolean) {
   return signedIn ? `${PUBLIC_COLUMNS}, user_id` : PUBLIC_COLUMNS;
@@ -25,6 +25,8 @@ export type GenerationRow = {
   score: number;
   wins: number;
   losses: number;
+  // score + wins, computed by the database. What every ranking sorts by.
+  points: number;
   style: string;
   user_id?: string;
 };
@@ -41,7 +43,10 @@ export type Riff = {
   theme: string;
   day: string;
   imagePrompt: string;
+  // Ranking points: vote score + "Which is funnier?" wins.
   score: number;
+  // Upvotes minus downvotes, the part of `score` that comes from voting.
+  voteScore: number;
   myVote: number;
   wins: number;
   losses: number;
@@ -87,7 +92,8 @@ export async function toRiffs(
     theme: r.theme,
     day: r.theme_day ?? nyToday(new Date(r.created_at)),
     imagePrompt: r.image_prompt,
-    score: r.score,
+    score: r.points,
+    voteScore: r.score,
     myVote: myVotes.get(r.id) ?? 0,
     wins: r.wins,
     losses: r.losses,
@@ -109,9 +115,9 @@ export async function getDailyWinners(
   const { data } = await supabase
     .from("generations")
     .select(generationColumns(signedIn))
-    .gt("score", 0)
+    .gt("points", 0)
     .gte("created_at", since)
-    .order("score", { ascending: false })
+    .order("points", { ascending: false })
     .order("created_at", { ascending: true })
     .limit(1000)
     .overrideTypes<GenerationRow[], { merge: false }>();
