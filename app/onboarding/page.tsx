@@ -3,7 +3,7 @@ import { getUserAndProfile, isProfileComplete } from "@/lib/auth";
 import { saveNames } from "./actions";
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900";
+  "w-full rounded-2xl border border-line bg-surface px-4 py-3 focus:ring-4 focus:ring-brand/30 focus:outline-none";
 
 export default async function OnboardingPage({
   searchParams,
@@ -15,15 +15,15 @@ export default async function OnboardingPage({
   const { error } = await searchParams;
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-10 py-24">
+    <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-16 sm:py-24">
       <div>
-        <h1 className="text-3xl font-bold">Welcome!</h1>
-        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Before you continue, tell us your name.
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">Welcome to Daily Riff!</h1>
+        <p className="mt-2 text-muted">
+          What should we call you? Your riffs show your first name and last initial.
         </p>
       </div>
       {error && (
-        <p className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <p className="rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {error === "missing"
             ? "Please fill in both your first and last name."
             : "Something went wrong saving your name. Try again."}
@@ -48,7 +48,7 @@ export default async function OnboardingPage({
             className={inputClass}
           />
         </label>
-        <button className="rounded-lg bg-black px-5 py-3 font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200">
+        <button className="rounded-full bg-brand px-6 py-3 font-semibold text-white hover:bg-brand-strong">
           Continue
         </button>
       </form>

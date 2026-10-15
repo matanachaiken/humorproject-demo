@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteHeader from "./SiteHeader";
 
@@ -13,18 +13,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Humor Project",
-  description: "Riff on a new theme every day, let AI make the image, and vote on the funniest.",
+  title: {
+    default: "Daily Riff",
+    template: "%s · Daily Riff",
+  },
+  description: "A new theme every day. Type a silly idea, AI turns it into an image, and everyone votes on the funniest.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col pb-16 font-sans sm:pb-0">
         <SiteHeader />
         {children}
       </body>

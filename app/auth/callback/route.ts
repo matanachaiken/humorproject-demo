@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isProfileComplete, type Profile } from "@/lib/auth";
+import { isProfileComplete, safeNextPath, type Profile } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -22,6 +22,11 @@ export async function GET(request: NextRequest) {
     .eq("id", data.user.id)
     .maybeSingle<Profile>();
 
-  const next = isProfileComplete(profile) ? "/feed" : "/onboarding";
-  return NextResponse.redirect(`${origin}${next}`);
+  // GoogleButton leaves the page to come back to in a short-lived cookie.
+  const saved = request.cookies.get("auth_next")?.value;
+  const back = safeNextPath(saved ? decodeURIComponent(saved) : null);
+  const next = isProfileComplete(profile) ? back : "/onboarding";
+  const response = NextResponse.redirect(`${origin}${next}`);
+  response.cookies.delete("auth_next");
+  return response;
 }

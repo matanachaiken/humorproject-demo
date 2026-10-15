@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/feed", "/members", "/profile", "/onboarding"];
+// The feed, battles, riff pages and Hall of Fame are public (read-only when
+// signed out). Pages about *you* need an account.
+const PROTECTED_PREFIXES = ["/me", "/profile", "/onboarding"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -37,7 +39,7 @@ export async function proxy(request: NextRequest) {
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.search = "";
+    url.search = `?next=${encodeURIComponent(pathname)}`;
     return NextResponse.redirect(url);
   }
 

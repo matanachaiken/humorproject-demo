@@ -37,3 +37,13 @@ export async function requireCompleteProfile() {
   if (!isProfileComplete(result.profile)) redirect("/onboarding");
   return { ...result, user: result.user, profile: result.profile! };
 }
+
+// Where to send someone after signing in. Only same-site paths are allowed,
+// so a crafted link can't bounce users to another website.
+export function safeNextPath(next: string | null | undefined, fallback = "/feed") {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
+    return fallback;
+  }
+  if (next === "/" || next.startsWith("/login") || next.startsWith("/auth")) return fallback;
+  return next;
+}

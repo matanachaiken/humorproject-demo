@@ -22,3 +22,19 @@ export function nyDayStart(now = new Date()) {
 
   return new Date(`${nyToday(now)}T00:00:00${isoOffset}`).toISOString();
 }
+
+// The instant the next New York day starts (when the new theme drops).
+// 30 hours after today's start always lands in tomorrow, even across DST.
+export function nyNextDayStart(now = new Date()) {
+  return nyDayStart(new Date(Date.parse(nyDayStart(now)) + 30 * 3_600_000));
+}
+
+// "2026-10-14" -> "Tue, Oct 14". Dates are calendar days, so format in UTC.
+export function formatDay(day: string, style: "short" | "long" = "short") {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: style === "long" ? "long" : "short",
+    month: style === "long" ? "long" : "short",
+    day: "numeric",
+  }).format(new Date(`${day}T00:00:00Z`));
+}

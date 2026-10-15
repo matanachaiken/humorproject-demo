@@ -14,7 +14,10 @@ import {
 import { getTodaysTheme } from "@/lib/theme";
 import { nyDayStart } from "@/lib/day";
 
-export type GenerateState = { error?: string; success?: string } | null;
+export type GenerateState =
+  | { error: string }
+  | { created: { id: number; caption: string; imageUrl: string } }
+  | null;
 
 const generationSchema = {
   type: "object",
@@ -104,27 +107,37 @@ export async function createGeneration(
     return { error: "Couldn't save the image. Please try again." };
   }
 
-  const { error: insertError } = await admin.from("generations").insert({
-    user_id: user.id,
-    creator_name: `${profile!.first_name!.trim()} ${profile!.last_name!.trim()[0]}.`,
-    theme_day: theme.day,
-    theme: theme.theme,
-    user_input: idea,
-    llm_prompt: llmPrompt,
-    image_prompt: imagePrompt,
-    caption,
-    text_model: textModel,
-    image_model: IMAGE_MODEL,
-    storage_path: storagePath,
-  });
-  if (insertError) {
+  const { data: inserted, error: insertError } = await admin
+    .from("generations")
+    .insert({
+      user_id: user.id,
+      creator_name: `${profile!.first_name!.trim()} ${profile!.last_name!.trim()[0]}.`,
+      theme_day: theme.day,
+      theme: theme.theme,
+      user_input: idea,
+      llm_prompt: llmPrompt,
+      image_prompt: imagePrompt,
+      caption,
+      text_model: textModel,
+      image_model: IMAGE_MODEL,
+      storage_path: storagePath,
+    })
+    .select("id")
+    .single();
+  if (insertError || !inserted) {
     console.error("Insert failed:", insertError);
     await admin.storage.from("generations").remove([storagePath]);
     return { error: "Couldn't save the image. Please try again." };
   }
 
   refresh();
-  return { success: "Posted! Scroll down to see it." };
+  return {
+    created: {
+      id: inserted.id,
+      caption,
+      imageUrl: admin.storage.from("generations").getPublicUrl(storagePath).data.publicUrl,
+    },
+  };
 }
 
 export type VoteResult = { ok: true } | { ok: false; error: string };
@@ -137,6 +150,16 @@ export async function castVote(generationId: number, vote: number): Promise<Vote
   if (!user) return { ok: false, error: "Sign in to vote." };
   if (!Number.isInteger(generationId) || ![-1, 0, 1].includes(vote)) {
     return { ok: false, error: "Invalid vote." };
+  }
+
+  const { data: target } = await supabase
+    .from("generations")
+    .select("user_id")
+    .eq("id", generationId)
+    .maybeSingle();
+  if (!target) return { ok: false, error: "That riff doesn't exist anymore." };
+  if (target.user_id === user.id) {
+    return { ok: false, error: "That's your riff. Let everyone else decide!" };
   }
 
   if (vote === 0) {
