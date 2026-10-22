@@ -36,7 +36,7 @@ export default function GenerateForm({
     createGeneration,
     null
   );
-  const [line, setLine] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const [style, setStyle] = useState<StyleId>("classic");
   const [idea, setIdea] = useState("");
   const [exampleIndex, setExampleIndex] = useState<number | null>(null);
@@ -74,12 +74,18 @@ export default function GenerateForm({
 
   useEffect(() => {
     if (!pending) return;
-    const timer = setInterval(() => setLine((l) => l + 1), 2500);
+    const start = Date.now();
+    const timer = setInterval(() => setElapsed(Date.now() - start), 200);
     return () => {
       clearInterval(timer);
-      setLine(0);
+      setElapsed(0);
     };
   }, [pending]);
+
+  // The action doesn't report real progress, so ease toward the end over the
+  // ~15 seconds a riff usually takes (about 88% by then) and hold short of full.
+  const progress = Math.min(0.95, 1 - Math.exp(-elapsed / 7000));
+  const line = Math.floor(elapsed / 2500);
 
   return (
     <div className="flex flex-col gap-6">
@@ -168,9 +174,22 @@ export default function GenerateForm({
       {pending && (
         <div className="flex animate-fade-in items-center gap-4 rounded-3xl bg-white/10 p-4" role="status">
           <div className="aspect-square w-24 shrink-0 animate-shimmer rounded-2xl bg-[linear-gradient(110deg,rgba(255,255,255,0.08)_30%,rgba(255,255,255,0.3)_50%,rgba(255,255,255,0.08)_70%)] bg-[length:200%_100%] sm:w-32" />
-          <div>
-            <p className="font-semibold">{COOKING_LINES[line % COOKING_LINES.length]}</p>
-            <p className="mt-1 text-sm text-white/60">AI images take about 15 seconds.</p>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{COOKING_LINES[Math.min(line, COOKING_LINES.length - 1)]}</p>
+            <div
+              className="mt-3 h-2 overflow-hidden rounded-full bg-white/15"
+              role="progressbar"
+              aria-label="Making your riff"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress * 100)}
+            >
+              <div
+                className="h-full rounded-full bg-brand transition-[width] duration-200 ease-linear"
+                style={{ width: `${progress * 100}%` }}
+              />
+            </div>
+            <p className="mt-2 text-sm text-white/60">AI images take about 15 seconds.</p>
           </div>
         </div>
       )}
