@@ -7,7 +7,10 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_code`);
+    // The signup check in the database (allowed domains and whitelisted
+    // emails) makes Supabase fail with "Database error saving new user".
+    const blocked = searchParams.get("error_description")?.includes("saving new user");
+    return NextResponse.redirect(`${origin}/login?error=${blocked ? "not_allowed" : "missing_code"}`);
   }
 
   const supabase = await createClient();

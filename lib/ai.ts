@@ -1,14 +1,5 @@
 import "server-only";
-
-// Tried in order: free-tier Gemini models are often overloaded or out of quota,
-// so we fall through to the next one. GEMINI_MODEL can put a preferred model first.
-const TEXT_MODELS = [
-  ...(process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : []),
-  "gemini-3.8-flash",
-  "gemini-3.5-flash",
-  "gemini-3.1-flash-lite",
-];
-export const IMAGE_MODEL = "@cf/black-forest-labs/flux-1-schnell";
+import { getModels, logLlmResponse, type CallContext } from "@/lib/pipeline";
 
 // Who we're making content for. Shared by every prompt so the voice is consistent.
 export const AUDIENCE = `The audience is Columbia College students like Sam: a junior who is \
@@ -19,16 +10,37 @@ internet-native humor about college life, NYC culture shock, and Midwest-vs-NYC 
 type JsonSchema = Record<string, unknown>;
 
 // Calls Gemini (Interactions API) and returns its reply parsed as JSON matching
-// `schema`, plus the model that actually answered so we can save it.
+// `schema`, plus the model that actually answered so we can save it. Models
+// come from the llm_models table and are tried in priority order: free-tier
+// Gemini models are often overloaded or out of quota, so we fall through to
+// the next one. GEMINI_MODEL can put a preferred model first. Every attempt
+// is logged to llm_responses.
 export async function generateJson<T>(
   prompt: string,
-  schema: JsonSchema
+  schema: JsonSchema,
+  ctx?: CallContext
 ): Promise<{ result: T; model: string }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
+  const { text } = await getModels();
+  const models = [...new Set([...(process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : []), ...text])];
+  if (!models.length) throw new Error("No active text models (see llm_models)");
+
   const errors: string[] = [];
-  for (const model of TEXT_MODELS) {
+  for (const model of models) {
+    const started = Date.now();
+    const fail = async (message: string) => {
+      errors.push(`${model}: ${message}`);
+      await logLlmResponse(ctx, {
+        provider: "google",
+        model,
+        prompt,
+        status: "error",
+        error: message,
+        latency_ms: Date.now() - started,
+      });
+    };
     const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -42,25 +54,40 @@ export async function generateJson<T>(
     }).catch((error: Error) => error);
 
     if (res instanceof Error) {
-      errors.push(`${model}: ${res.message}`);
+      await fail(res.message);
       continue;
     }
     const data = await res.json().catch(() => null);
     if (!res.ok || !data || data.error) {
-      errors.push(`${model}: ${res.status} ${data?.error?.message ?? ""}`.trim());
+      await fail(`${res.status} ${data?.error?.message ?? ""}`.trim());
       continue;
     }
 
     type Step = { type: string; content?: { type: string; text?: string }[] };
-    const text = (data.steps as Step[] | undefined)
+    const reply = (data.steps as Step[] | undefined)
       ?.filter((step) => step.type === "model_output")
       .flatMap((step) => step.content ?? [])
       .find((part) => part.type === "text" && part.text)?.text;
-    if (!text) {
-      errors.push(`${model}: no text in response`);
+    if (!reply) {
+      await fail("no text in response");
       continue;
     }
-    return { result: JSON.parse(text) as T, model };
+    let result: T;
+    try {
+      result = JSON.parse(reply) as T;
+    } catch {
+      await fail(`invalid JSON: ${reply.slice(0, 200)}`);
+      continue;
+    }
+    await logLlmResponse(ctx, {
+      provider: "google",
+      model,
+      prompt,
+      response: reply,
+      status: "ok",
+      latency_ms: Date.now() - started,
+    });
+    return { result, model };
   }
   const message = `All Gemini models failed: ${errors.join(" | ")}`;
   // Every model was rate-limited (free tier: 20 requests/day each) or overloaded.
@@ -75,16 +102,26 @@ export class AiBusyError extends Error {}
 // so a prompt Gemini thought was fine can still trip it.
 export class ImageBlockedError extends Error {}
 
-// Calls Cloudflare Workers AI (Flux 1 Schnell) and returns the JPEG bytes.
-export async function generateImage(prompt: string): Promise<Buffer> {
+// Calls Cloudflare Workers AI with the first active image model and returns
+// the JPEG bytes plus the model's name. The call is logged to llm_responses.
+export async function generateImage(
+  prompt: string,
+  ctx?: CallContext
+): Promise<{ image: Buffer; model: string }> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !token) {
     throw new Error("CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN is not set");
   }
+  const { image: model } = await getModels();
+  if (!model) throw new Error("No active image model (see llm_models)");
+
+  const started = Date.now();
+  const log = (row: { status: "ok" | "error"; response?: string; error?: string }) =>
+    logLlmResponse(ctx, { provider: "cloudflare", model, prompt, latency_ms: Date.now() - started, ...row });
 
   const res = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${IMAGE_MODEL}`,
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -94,6 +131,7 @@ export async function generateImage(prompt: string): Promise<Buffer> {
   );
   if (!res.ok) {
     const body = await res.text();
+    await log({ status: "error", error: `${res.status}: ${body.slice(0, 300)}` });
     // 8007 is Workers AI's "Input prompt contains NSFW content".
     if (body.includes('"code":8007')) throw new ImageBlockedError(body.slice(0, 300));
     throw new Error(`Cloudflare error ${res.status}: ${body.slice(0, 300)}`);
@@ -101,6 +139,11 @@ export async function generateImage(prompt: string): Promise<Buffer> {
 
   const data = await res.json();
   const base64: string | undefined = data.result?.image ?? data.image;
-  if (!base64) throw new Error("Cloudflare returned no image");
-  return Buffer.from(base64, "base64");
+  if (!base64) {
+    await log({ status: "error", error: "no image in response" });
+    throw new Error("Cloudflare returned no image");
+  }
+  const image = Buffer.from(base64, "base64");
+  await log({ status: "ok", response: `[JPEG image, ${Math.round(image.length / 1024)} KB]` });
+  return { image, model };
 }

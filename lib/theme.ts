@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUDIENCE, generateJson } from "@/lib/ai";
+import { getChain, render, step } from "@/lib/pipeline";
 import { after } from "next/server";
 import { nyNextDayStart, nyToday } from "@/lib/day";
 
@@ -74,30 +75,9 @@ const themeSchema = {
   required: ["theme", "source_index"],
 };
 
-function themeFromPostsPrompt(day: string, posts: RedditPost[]) {
-  const list = posts
-    .map((post, i) => `${i}. [r/${post.subreddit}] ${post.title}`)
-    .join("\n");
-  return `You pick the daily theme for a humor site where users create funny AI images.
-${AUDIENCE}
-
-Today is ${day}. Here are today's top Reddit posts:
-${list}
-
-Pick ONE post that is lighthearted and would inspire funny images. Never pick posts \
-about death, injury, crime, violence, tragedy, politics, or real private individuals; \
-skip them even if they are popular.
-Turn it into a short, playful theme (max 60 characters) that users can riff on. \
-Don't name real people. Return the theme and the index of the post you used. \
-If no post is suitable, invent a fitting theme yourself and use source_index -1.`;
-}
-
-function inventedThemePrompt(day: string) {
-  return `You pick the daily theme for a humor site where users create funny AI images.
-${AUDIENCE}
-
-Today is ${day}. Invent a short, playful theme (max 60 characters) that fits this time \
-of year in New York and in the college semester. Return it with source_index -1.`;
+// Numbered list of posts for the {{posts}} placeholder.
+export function postList(posts: RedditPost[]) {
+  return posts.map((post, i) => `${i}. [r/${post.subreddit}] ${post.title}`).join("\n");
 }
 
 type PickedTheme = DailyTheme & { llm_prompt: string | null; text_model: string | null };
@@ -135,11 +115,15 @@ async function pickTheme(day: string): Promise<PickedTheme> {
     console.warn("Couldn't fetch Reddit posts, inventing a theme instead:", error);
   }
 
-  const prompt = posts.length ? themeFromPostsPrompt(day, posts) : inventedThemePrompt(day);
   try {
+    // Step 1 picks from Reddit's posts; step 2 invents one when Reddit is down.
+    const chain = await getChain("theme");
+    const pick = step(chain, posts.length ? 1 : 2);
+    const prompt = render(pick.template, { audience: AUDIENCE, day, posts: postList(posts) });
     const { result, model } = await generateJson<{ theme: string; source_index: number }>(
       prompt,
-      themeSchema
+      themeSchema,
+      { chainId: chain.id, stepId: pick.id }
     );
     const source = posts[result.source_index];
     return {
@@ -180,16 +164,12 @@ function draftIdeaExamples(theme: DailyTheme) {
 
   after(async () => {
     try {
+      const chain = await getChain("idea_examples");
+      const write = step(chain, 1);
       const { result } = await generateJson<{ examples: string[] }>(
-        `You write example prompts for a humor site where users type a silly idea and AI turns it into an image.
-${AUDIENCE}
-
-Today's theme: "${theme.theme}"
-
-Write SIX example ideas a user might type for this theme. Each one is a specific, visual,
-absurd scene in under 70 characters, lowercase, no quotes or hashtags. Make them all
-clearly different from each other, and keep them PG-13.`,
-        examplesSchema
+        render(write.template, { audience: AUDIENCE, theme: theme.theme }),
+        examplesSchema,
+        { chainId: chain.id, stepId: write.id }
       );
       const examples = result.examples
         .map((e) => e.trim().replace(/^["']|["']$/g, "").slice(0, 90))

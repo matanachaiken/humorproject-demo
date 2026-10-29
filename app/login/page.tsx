@@ -23,7 +23,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </p>
         {error && (
           <p className="mt-5 rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-            Sign-in failed ({String(error)}). Please try again.
+            {error === "not_allowed"
+              ? "New accounts need an approved email address. Try another Google account, or ask an admin to add yours."
+              : `Sign-in failed (${String(error)}). Please try again.`}
           </p>
         )}
         <div className="mt-6">
